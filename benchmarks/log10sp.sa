@@ -1,0 +1,161 @@
+.global log10sp
+
+.log10sp:
+
+.input		len, input_x1:input_x0, output_y1:output_y0
+.gen_var	tmp0:tmp1, tmp2, x2, x1:x0, y2, y1:y0, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, x3, x4, x5, mant0, mant1, mant2, mant3, mant4, mant5, mant6, mant7, mant8, mant9, mant10, mant11, mant12, mant13, mant14, mant15, mant16, mant17, mant18, mant19, mant20, lg2 
+.add_var	x, y, offset
+
+			SMVAGA36    	input_x1:input_x0,     x
+			SMVAGA36    	output_y1:output_y0,   y
+			
+			SMOVIL      	16,     tmp1
+			SMOVIH			0,		tmp1
+			SMOVIL			0,		tmp0
+			SMVAGA36    	tmp0:tmp1,   offset 
+			SMOVIL      	3,      tmp2
+			SMVCGC      	tmp2,   SCR
+			
+.log10sp_loop: .loop
+
+			VLDDW			*x++[offset],			x1:x0
+			VLDW			*x++[offset],			x2
+			
+			VMOVIL			0x0000, 				a0						
+			VMOVIH			0x35590000, 			a0				; a0 = 0.000000809429151106848
+			VMOVIL			0xA839, 				a1						
+			VMOVIH			0x3FB80000, 			a1				; a1 = 1.4426337707219
+			VMOVIL			0x5F43, 				a2						
+			VMOVIH			0xBF380000, 			a2				; a2 = -0.720203582002274		
+			VMOVIL			0x861E, 				a3						
+			VMOVIH			0x3EF10000, 			a3				; a3 = 0.471726375578925
+			VMOVIL			0x9B0A, 				a4						
+			VMOVIH			0xBEA40000, 			a4				; a4 = -0.32149535903916	
+			VMOVIL			0x328E, 				a5						
+			VMOVIH			0x3E410000, 			a5				; a5 = 0.18866942308721		
+			VMOVIL			0x82B6, 				a6						
+			VMOVIH			0xBD9B0000, 			a6				; a6 = -0.0759329093161256		
+			VMOVIL			0x3D78, 				a7						
+			VMOVIH			0x3C6F0000, 			a7				; a7 = 0.0146020601295848
+			VMOVIL			0xFFFF, 				a8	
+			VMOVIH			0x007F0000, 			a8				; a8
+			VMOVIL			0x0000, 				a9
+			VMOVIH			0x3F800000, 			a9				; a9
+			
+			VFLOGS32		x0,						x3
+			VFLOGS32		x1,						x4
+			VFLOGS32		x2,						x5				;exp(x)
+			
+			VFINTS32		x3,						x3
+			VFINTS32		x4,						x4
+			VFINTS32		x5,						x5				; int(exp(x))
+			
+			VAND			x0,	a8,					mant0
+			VAND			x1,	a8,					mant1
+			VAND			x2,	a8,					mant2			; mant(x)
+
+			VOR				mant0,	a9,				mant0
+			VOR				mant1,	a9,				mant1
+			VOR				mant2,	a9,				mant2			; mant(x)
+			
+			VFSUBS32		a9, mant0,				mant0
+			VFSUBS32		a9, mant1,				mant1
+			VFSUBS32		a9, mant2,				mant2			; mant=mant-1
+			
+			VMOV			a0,						y0
+			VMOV			a0,						y1
+			VMOV			a0,						y2				; y=a0
+			
+			VFMULAS32		mant0, a1, y0,			y0
+			VFMULAS32		mant1, a1, y1,			y1
+			VFMULAS32		mant2, a1, y2,			y2				; y=mant*a1+y
+			
+			VFMULS32		mant0, mant0,			mant3
+			VFMULS32		mant1, mant1,			mant4
+			VFMULS32		mant2, mant2,			mant5			; mant^2
+			
+			VFMULAS32		mant3, a2, y0,			y0
+			VFMULAS32		mant4, a2, y1,			y1
+			VFMULAS32		mant5, a2, y2,			y2				; y=mant^2*a2+y
+			
+			VFMULS32		mant0,	mant3,			mant6
+			VFMULS32		mant1,	mant4,			mant7
+			VFMULS32		mant2,	mant5,			mant8			; mant^3
+			
+			VFMULAS32		mant6, a3, y0,			y0
+			VFMULAS32		mant7, a3, y1,			y1
+			VFMULAS32		mant8, a3, y2,			y2				; y=mant^3*a3+y
+			
+			VFMULS32		mant3,	mant3,			mant9
+			VFMULS32		mant4,	mant4,			mant10
+			VFMULS32		mant5,	mant5,			mant11			; mant^4
+			
+			VFMULAS32		mant9, a4, y0,			y0
+			VFMULAS32		mant10, a4, y1,			y1
+			VFMULAS32		mant11, a4, y2,			y2				; y=mant^4*a4+y
+			
+			VFMULS32		mant3,	mant6,			mant12
+			VFMULS32		mant4,	mant7,			mant13
+			VFMULS32		mant5,	mant8,			mant14			; mant^5
+			
+			VFMULAS32		mant12, a5, y0,			y0
+			VFMULAS32		mant13, a5, y1,			y1
+			VFMULAS32		mant14, a5, y2,			y2				; y=mant^5*a5+y
+			
+			VFMULS32		mant6, 	mant6,			mant15
+			VFMULS32		mant7,	mant7, 			mant16
+			VFMULS32		mant8,	mant8,			mant17			; mant^6
+			
+			VFMULAS32		mant15, a6, y0,			y0
+			VFMULAS32		mant16, a6, y1,			y1
+			VFMULAS32		mant17, a6, y2,			y2				; y=mant^6*a6+y
+			
+			VFMULS32		mant6,	mant9,			mant18
+			VFMULS32		mant7,	mant10,			mant19
+			VFMULS32		mant8,	mant11,			mant20			; mant^7
+			
+			VFMULAS32		mant18, a7, y0,			y0
+			VFMULAS32		mant19, a7, y1,			y1
+			VFMULAS32		mant20, a7, y2,			y2				; y=mant^7*a7+y
+			
+			VFADDS32		x3, y0,					y0
+			VFADDS32		x4, y1,					y1
+			VFADDS32		x5, y2,					y2				; y=y+int(exp(x))
+			
+			VMOVIL			0x209A,					lg2				
+			VMOVIH			0x3E9A0000,				lg2				; log10(2)
+			
+			VFMULS32		y0,	lg2,				y0
+			VFMULS32		y1,	lg2,				y1
+			VFMULS32		y2,	lg2,				y2				; y=log10(x)=y*log10(2)
+			
+			VSTDW			y1:y0,	*y++[offset]
+			VSTW			y2,		*y++[offset]
+			SSUBU			48, len,	len
+[len]		SBR				.log10sp_loop
+
+.endloop
+
+.size log10sp, -.log10sp			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			

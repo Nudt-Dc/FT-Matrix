@@ -1,0 +1,276 @@
+.global DSP_iir_ss 
+
+.input Input_x,input_coefs1:input_coefs0,nCoefs,input_state1:input_state0
+
+.gen_var tmp_1:tmp_0,tmp_2,tmp_3,tmp_4,tmp_5
+.gen_var tmp0,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,tmp9,tmp10,tmp11,tmp12,tmp13,tmp14,tmp15,tmp16,tmp17,tmp18,tmp19,tmp20,tmp21,tmp22,tmp23,tmp24,tmp25,tmp26,tmp27,tmp28,tmp29,tmp30,tmp31
+.add_var tmp_addr
+
+.gen_var nCoefs_num,Output,count,LOOP_2,judge_1,judge_2,k_0,judge,t_63,d_64
+.gen_var Offset_0:Offset_1,offset16
+.gen_var pointer_0:pointer_1,pointer
+.add_var pointer_address
+
+.gen_var addr_0:addr_1,addr_2:addr_3
+.add_var address_Output,address_state,address_Output_1,address_state_1
+
+.add_var median_coefs,median_state
+.gen_var short_coefs_h0,short_coefs_h1,short_state_h,short_coefs_s0,short_coefs_s2,short_state_s0
+.gen_var hshort_coefs_0,hshort_coefs_1,hshort_coefs_2,hshort_coefs_3,hshort_state_0,hshort_state_1
+.gen_var p0,p1,p0_p1
+
+.gen_var temp_Output,temp_state
+
+
+SMOVIL  0,tmp_1
+
+SMOVIL  0X40160000,tmp_0
+SMOVIH  0X40160000,tmp_0
+SMVAGA36    tmp_1:tmp_0,tmp_addr
+
+SMOVIL  0x0c080400,tmp0
+SMOVIH  0x0c080400,tmp0
+SSTW    tmp0,*tmp_addr++[1]
+SMOVIL  0x1c181410,tmp1
+SMOVIH  0x1c181410,tmp1
+SSTW    tmp1,*tmp_addr++[1]
+SMOVIL  0x2c282420,tmp2
+SMOVIH  0x2c282420,tmp2
+SSTW    tmp2,*tmp_addr++[1]
+SMOVIL  0x3c383430,tmp3
+SMOVIH  0x3c383430,tmp3
+SSTW    tmp3,*tmp_addr++[1]
+SMOVIL  0x0d090501,tmp4
+SMOVIH  0x0d090501,tmp4
+SSTW    tmp4,*tmp_addr++[1]
+SMOVIL  0x1d191511,tmp5
+SMOVIH  0x1d191511,tmp5
+SSTW    tmp5,*tmp_addr++[1]
+SMOVIL  0x2d292521,tmp6
+SMOVIH  0x2d292521,tmp6
+SSTW    tmp6,*tmp_addr++[1]
+SMOVIL  0x3d393531,tmp7
+SMOVIH  0x3d393531,tmp7
+SSTW    tmp7,*tmp_addr++[1]
+
+SMOVIL  0x0e0a0602,tmp8
+SMOVIH  0x0e0a0602,tmp8
+SSTW    tmp8,*tmp_addr++[1]
+SMOVIL  0x1e1a1612,tmp9
+SMOVIH  0x1e1a1612,tmp9
+SSTW    tmp9,*tmp_addr++[1]
+SMOVIL  0x2e2a2622,tmp10
+SMOVIH  0x2e2a2622,tmp10
+SSTW    tmp10,*tmp_addr++[1]
+SMOVIL  0x3e3a3632,tmp11
+SMOVIH  0x3e3a3632,tmp11
+SSTW    tmp11,*tmp_addr++[1]
+SMOVIL  0x0f0b0703,tmp12
+SMOVIH  0x0f0b0703,tmp12
+SSTW    tmp12,*tmp_addr++[1]
+SMOVIL  0x1f1b1713,tmp13
+SMOVIH  0x1f1b1713,tmp13
+SSTW    tmp13,*tmp_addr++[1]
+SMOVIL  0x2f2b2723,tmp14
+SMOVIH  0x2f2b2723,tmp14
+SSTW    tmp14,*tmp_addr++[1]
+SMOVIL  0x3f3b3733,tmp15
+SMOVIH  0x3f3b3733,tmp15
+SSTW    tmp15,*tmp_addr++[1]
+
+SMOVIL  0x06040200,tmp16
+SMOVIH  0x06040200,tmp16
+SSTW    tmp16,*tmp_addr++[1]
+SMOVIL  0x0e0c0a08,tmp17
+SMOVIH  0x0e0c0a08,tmp17
+SSTW    tmp17,*tmp_addr++[1]
+SMOVIL  0x16141210,tmp18
+SMOVIH  0x16141210,tmp18
+SSTW    tmp18,*tmp_addr++[1]
+SMOVIL  0x1e1c1a18,tmp19
+SMOVIH  0x1e1c1a18,tmp19
+SSTW    tmp19,*tmp_addr++[1]
+SMOVIL  0x07050301,tmp20
+SMOVIH  0x07050301,tmp20
+SSTW    tmp20,*tmp_addr++[1]
+SMOVIL  0x0f0d0b09,tmp21
+SMOVIH  0x0f0d0b09,tmp21
+SSTW    tmp21,*tmp_addr++[1]
+SMOVIL  0x17151311,tmp22
+SMOVIH  0x17151311,tmp22
+SSTW    tmp22,*tmp_addr++[1]
+SMOVIL  0x1f1d1b19,tmp23
+SMOVIH  0x1f1d1b19,tmp23
+SSTW    tmp23,*tmp_addr++[1]
+
+SMOVIL  0x02220020,tmp24
+SMOVIH  0x02220020,tmp24
+SSTW    tmp24,*tmp_addr++[1]
+SMOVIL  0x06260424,tmp25
+SMOVIH  0x06260424,tmp25
+SSTW    tmp25,*tmp_addr++[1]
+SMOVIL  0x0a2a0828,tmp26
+SMOVIH  0x0a2a0828,tmp26
+SSTW    tmp26,*tmp_addr++[1]
+SMOVIL  0x0e2e0c2c,tmp27
+SMOVIH  0x0e2e0c2c,tmp27
+SSTW    tmp27,*tmp_addr++[1]
+SMOVIL  0x12321030,tmp28
+SMOVIH  0x12321030,tmp28
+SSTW    tmp28,*tmp_addr++[1]
+SMOVIL  0x16361434,tmp29
+SMOVIH  0x16361434,tmp29
+SSTW    tmp29,*tmp_addr++[1]
+SMOVIL  0x1a3a1838,tmp30
+SMOVIH  0x1a3a1838,tmp30
+SSTW    tmp30,*tmp_addr++[1]
+SMOVIL  0x1e3e1c3c,tmp31
+SMOVIH  0x1e3e1c3c,tmp31
+SSTW    tmp31,*tmp_addr++[1]
+
+.Shuff_part:
+
+SMOVIL  0,k_0
+SMOVIH  0,k_0
+
+SMOVIL  64,d_64
+SMOVIH  0,d_64
+
+SSUB	1,d_64,t_63
+
+SADD    t_63,nCoefs,nCoefs_num
+SSHFLR  6,nCoefs_num,nCoefs_num
+SSUB	1,nCoefs_num,nCoefs_num
+SMOV    Input_x,Output
+SMOV    nCoefs,count
+
+SMOV	k_0,Offset_0
+SMOVIL  16,Offset_1
+SMOVIH  0,Offset_1
+SMVAGA36  Offset_0:Offset_1,offset16
+
+SMVAGA36    input_coefs1:input_coefs0,median_coefs
+SMVAGA36    input_state1:input_state0,median_state
+
+SMOVIL  0,addr_0
+SMOVIL  0X40000000,addr_1
+SMOVIH  0X40000000,addr_1
+
+SMOVIL  0,addr_2
+SMOVIL  0X40001000,addr_3
+SMOVIH  0X40001000,addr_3
+
+.CIRCLE_LOOP: .loop
+VLDW    *median_coefs++[offset16],short_coefs_h0
+VLDW    *median_coefs++[offset16],short_coefs_h1
+VLDW    *+median_state[0],short_state_h
+
+SMOVIL  0,tmp_2
+SMVCGC  tmp_2,SMR
+VSHUFH  short_coefs_h0,short_coefs_h1,short_coefs_s0
+
+SMOVIL  2,tmp_3
+SMVCGC  tmp_3,SMR
+VSHUFH  short_coefs_h0,short_coefs_h1,short_coefs_s2
+
+SMOVIL  4,tmp_4
+SMVCGC  tmp_4,SMR
+VSHUFH  short_state_h,short_state_h,short_state_s0
+
+.Shuff_part0:
+SMVAGA36    addr_0:addr_1,address_Output
+
+VSTW    short_coefs_s0,*address_Output++[offset16]
+VSTW    short_coefs_s2,*address_Output++[offset16]
+VSTW    short_state_s0,*address_Output++[offset16]
+
+.Shuff_part1:
+SMVAGA36    addr_0:addr_1,address_Output_1
+VLDH    *address_Output_1++[offset16],hshort_coefs_0
+VLDH    *address_Output_1++[offset16],hshort_coefs_1
+VLDH    *address_Output_1++[offset16],hshort_coefs_2
+VLDH    *address_Output_1++[offset16],hshort_coefs_3
+VLDH    *address_Output_1++[offset16],hshort_state_0
+VLDH    *address_Output_1++[offset16],hshort_state_1
+
+VMOVIL  0,p0
+VMOVIL  0,p1
+VMOVIH  0,p0
+VMOVIH  0,p1
+
+.Shuff_part2:
+VMULAS16T hshort_coefs_2,hshort_state_0,p0,p0
+VMULAS16T hshort_coefs_3,hshort_state_1,p0,p0
+VMULAS16T hshort_coefs_0,hshort_state_0,p1,p1
+VMULAS16T hshort_coefs_1,hshort_state_1,p1,p1
+
+VADD    p0,p1,p0_p1
+VSHFAR  14,p0,p0
+VSHFAR  14,p0_p1,p0_p1
+
+SLT     t_63,count,judge
+[judge]SMOVIL  14,LOOP_2
+[judge]SMOVIH  0,LOOP_2
+[!judge]SSHFLR  2,count,LOOP_2
+[!judge]SSUB     2,LOOP_2,LOOP_2
+
+SMVAGA36    addr_0:addr_1,address_Output
+SMVAGA36    addr_2:addr_3,address_state
+
+SVBCAST Output,temp_Output
+VADD    temp_Output,p0,temp_state
+VADD    temp_Output,p0_p1,temp_Output
+
+VSTW    temp_Output,*address_Output++[1]
+VSTW    temp_state,*address_state++[1]
+
+.GEMMV_ST: .loop
+VLDW    *+address_Output[0],temp_Output
+VLDW    *+address_state[0],temp_state
+
+VADD    temp_Output,p0_p1,temp_Output
+VADD    temp_state,p0_p1,temp_state
+
+VSTW    temp_Output,*address_Output++[1]
+VSTW    temp_state,*address_state++[1]
+
+SSUB    1,LOOP_2,LOOP_2
+SLT     LOOP_2,k_0,judge_2
+[!judge_2] SBR .GEMMV_ST
+.endloop
+
+.Shuff_part3:
+SMVAGA36    addr_0:addr_1,address_Output_1
+SMVAGA36    addr_2:addr_3,address_state_1
+VLDW    *+address_state_1[0],temp_state
+
+SLT     t_63,count,judge
+[judge]SSUB d_64,count,count
+[judge]SMOVIL  15,pointer
+[judge]SMOVIH  0,pointer
+[!judge]SSHFLR  2,count,count
+[!judge]SSUB    1,count,count
+[!judge]SMOV    count,pointer
+
+SMOV	k_0,pointer_0
+SMOV    pointer,pointer_1
+SMVAGA36    pointer_0:pointer_1,pointer_address
+
+VLDW    *+address_Output_1[pointer_address],temp_Output
+VMVCGC      temp_Output,SVR
+SMVCCG      SVR0,Output
+
+.Shuff_part4:
+SMOVIL  6,tmp_5
+SMVCGC  tmp_5,SMR
+VSHUFH  short_state_h,temp_state,short_state_h
+VSTW    short_state_h,*median_state++[offset16]
+
+SSUB    1,nCoefs_num,nCoefs_num
+SLT     nCoefs_num,k_0,judge_1
+[!judge_1]SBR .CIRCLE_LOOP
+
+.endloop
+
+.output Output
+.size DSP_iir_ss,.-DSP_iir_ss

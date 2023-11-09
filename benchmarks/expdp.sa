@@ -1,0 +1,177 @@
+.global expdp
+
+.expdp:
+
+.input		len, input_x1:input_x0, output_y1:output_y0
+.gen_var	tmp0:tmp1, tmp2, x5:x4, x3:x2, x1:x0, y5:y4, y3:y2, y1:y0, a0H:a0L, a1H:a1L, a2H:a2L, a3H:a3L, a4H:a4L, a5H:a5L, a6H:a6L, a7H:a7L, a8H:a8L, x7:x6, x9:x8, x11:x10, cond0, cond1, cond2, z1:z0, z3:z2, z5:z4, x13:x12, x15:x14, x17:x16, z7:z6, z9:z8, z11:z10, z13:z12, z15:z14, z17:z16, z19:z18, z21:z20, z23:z22 
+.add_var    x, y, offset
+
+			SMVAGA36    input_x1:input_x0,     x
+			SMVAGA36    output_y1:output_y0,   y
+			
+			SMOVIL      	16,     tmp1
+			SMOVIH			0,		tmp1
+			SMOVIL			0,		tmp0
+			SMVAGA36    	tmp0:tmp1,   offset 
+			SMOVIL      	3,      tmp2
+			SMVCGC      	tmp2,   SCR
+
+.expdp_loop: .loop
+
+			VLDDWM2		*x++[offset],			x1:x0
+			VLDDWM2		*x++[offset],			x3:x2
+			VLDDWM2		*x++[offset],			x5:x4		;x
+			
+			VMOVIL		0x82fe,                 a0L							
+		    VMOVIH		0x652b0000, 			a0L	
+		    VMOVIL		0x1547, 				a0H						
+		    VMOVIH		0x3ff70000, 			a0H			;a0 = l2e
+			
+			VMOVIL      0,                  	a1L
+            VMOVIH      0,                  	a1L
+            VMOVIL      0,                  	a1H
+            VMOVIH      0x3FF00000,             a1H 		;a1=1
+			
+			VMOVIL		0x0000,                 a2L
+		    VMOVIH 		0x00000000,             a2L
+		    VMOVIL		0x0000,                 a2H
+		    VMOVIH		0x00000000,             a2H			;a2=0
+			
+			VMOVIL		0xf342, 				a3L							
+			VMOVIH		0x2b020000, 			a3L							
+			VMOVIL		0xf05d, 				a3H							
+			VMOVIH		0x3fce0000, 			a3H			; a3 = 0.241710325242730
+			
+			VMOVIL		0x4f46, 				a4L							
+			VMOVIH		0xa5ac0000, 			a4L							
+			VMOVIL		0xa703, 				a4H						
+			VMOVIH		0xbfd30000, 			a4H	    	; a4 = -0.307068740644571
+			
+			VMOVIL		0x020D, 				a5L						
+			VMOVIH		0x03D20000, 			a5L						
+			VMOVIL		0xF800, 				a5H						
+			VMOVIH		0x408F0000, 			a5H			; a5 = 1023.000007286727458
+			
+			VMOVIL		0x4CAE, 				a6L							
+			VMOVIH		0x4AD40000, 			a6L							
+			VMOVIL		0x026F, 				a6H							
+			VMOVIH		0x3F8C0000, 			a6H			; a6 = 0.013676518889531
+		
+			VMOVIL		0x6CDA, 				a7L			
+			VMOVIH		0xC6A80000, 			a7L			
+			VMOVIL		0x7413, 				a7H			
+			VMOVIH		0x3FAA0000, 			a7H			; a7 = 0.051666849136575
+			
+			VMOVIL		0, 						a8L
+			VMOVIH		0, 						a8L
+			VMOVIL		0, 						a8H
+			VMOVIH		0x41300000,				a8H			; a8
+			
+			VFMULD		x1:x0, a0H:a0L,			x1:x0
+			VFMULD		x3:x2, a0H:a0L,			x3:x2
+			VFMULD		x5:x4, a0H:a0L,			x5:x4		;x=x*12e
+			
+			VMOV		x0,						x6
+			VMOV		x1,						x7
+			VMOV		x2,						x8
+			VMOV		x3,						x9
+			VMOV		x4,						x10
+			VMOV		x5,						x11			;x'=x
+			
+			VFCMPLD		x7:x6, a2H:a2L,			cond0
+			VFCMPLD		x9:x8, a2H:a2L,			cond1
+			VFCMPLD		x11:x10, a2H:a2L,		cond2		;x'<0?
+			
+[cond0]		VFSUBD		a1H:a1L, x7:x6,			x7:x6	
+[cond1]		VFSUBD		a1H:a1L, x9:x8,			x9:x8
+[cond2]		VFSUBD		a1H:a1L, x11:x10,		x11:x10		;if(x'<0) then x'=x'-1
+
+			VFDTRU		x7:x6,					x6
+			VFDTRU		x9:x8,					x8
+			VFDTRU		x11:x10,				x10		
+			
+			VFINTD		x6,						x7:x6
+			VFINTD		x8,						x9:x8
+			VFINTD		x10,					x11:x10		;x'=int(x')
+			
+			VFSUBD		x7:x6,	x1:x0,			z1:z0
+			VFSUBD		x9:x8,	x3:x2,			z3:z2
+			VFSUBD		x11:x10, x5:x4,			z5:z4		;z=x-x'
+			
+			VMOV		x0,						x12
+			VMOV		x1,						x13
+			VMOV		x2,						x14
+			VMOV		x3,						x15
+			VMOV		x4,						x16
+			VMOV		x5,						x17			;x"=x
+			
+			VFMULAD		z1:z0, a4H:a4L,	x13:x12,	x13:x12
+			VFMULAD		z3:z2, a4H:a4L,	x15:x14,	x15:x14
+			VFMULAD		z5:z4, a4H:a4L,	x17:x16,	x17:x16	;x"=z*a4+x"
+			
+			VFMULD		z1:z0, z1:z0,			z7:z6
+			VFMULD		z3:z2, z3:z2,			z9:z8
+			VFMULD		z5:z4, z5:z4,			z11:z10		;z^2		
+			
+			VFMULAD		z7:z6, a3H:a3L, x13:x12,	x13:x12
+			VFMULAD		z9:z8, a3H:a3L, x15:x14,	x15:x14
+			VFMULAD		z11:z10, a3H:a3L, x17:x16,	x17:x16	;x"=z^2*a3+x"
+			
+			VFMULD		z1:z0, z7:z6,			z13:z12
+			VFMULD		z3:z2, z9:z8,			z15:z14
+			VFMULD		z5:z4, z11:z10,			z17:z16		;z^3
+			
+			VFMULAD		z13:z12, a7H:a7L, x13:x12,	x13:x12
+			VFMULAD		z15:z14, a7H:a7L, x15:x14,	x15:x14
+			VFMULAD		z17:z16, a7H:a7L, x17:x16,	x17:x16	;x"=z^3*a7+x"
+			
+			VFMULD		z1:z0, z13:z12,			z19:z18
+			VFMULD		z3:z2, z15:z14,			z21:z20
+			VFMULD		z5:z4, z17:z16,			z23:z22		;z^4
+			
+			VFMULAD		z19:z18, a6H:a6L, x13:x12,	x13:x12
+			VFMULAD		z21:z20, a6H:a6L, x15:x14,	x15:x14
+			VFMULAD		z23:z22, a6H:a6L, x17:x16,	x17:x16	;x"=z^4*a6+x"
+			
+			VFADDD		x13:x12, a5H:a5L,		x13:x12
+			VFADDD		x15:x14, a5H:a5L,		x15:x14
+			VFADDD		x17:x16, a5H:a5L,		x17:x16		;x"=x"+a5
+			
+			VFMULD		x13:x12, a8H:a8L,		x13:x12
+			VFMULD		x15:x14, a8H:a8L,		x15:x14
+			VFMULD		x17:x16, a8H:a8L,		x17:x16  	;x"=x"*a8
+			
+			VFDTRU		x13:x12,				y1
+			VFDTRU		x15:x14,				y3
+			VFDTRU		x17:x16,				y5			;y
+			
+			VMOVIL		0, 						y0
+			VMOVIL		0, 						y2
+			VMOVIL		0, 						y4
+			
+			VSTDWM16	y1:y0,	*y++[offset]
+			VSTDWM16	y3:y2,	*y++[offset]
+			VSTDWM16	y5:y4,	*y++[offset]
+			SSUBU		48, len, len
+[len]		SBR			.expdp_loop
+
+.endloop
+
+.size expdp, -.expdp			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			

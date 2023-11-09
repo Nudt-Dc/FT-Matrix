@@ -1,0 +1,281 @@
+.global atandp
+.atandp:
+
+.input      len, input_x1:input_x0, output_y1:output_y0 
+.gen_var    tmp0:tmp1, tmp2,  x1:x0, x3:x2, x5:x4, a0H:a0L, a1L, a1H, sign0H:sign0L, sign1H:sign1L, sign2H:sign2L, a31, cond0, cond1, cond2, flag0H:flag0L, flag1H:flag1L, flag2H:flag2L, fabs0H:fabs0L, fabs1H:fabs1L, fabs2H:fabs2L, const1.05H:const1.05L, x7:x6, x9:x8, x11:x10, x13:x12, x15:x14, x17:x16, x19:x18, x21:x20, x23:x22, x25:x24, x27:x26, x29:x28, x31:x30, x33:x32, x35:x34, x37:x36, x39:x38, x41:x40, a2H:a2L, c1H:c1L, c2H:c2L, c3H:c3L, c4H:c4L, c5H:c5L, c6H:c6L, c7H:c7L, c8H:c8L, y1:y0, y3:y2, y5:y4, coef0H:coef0L, coef1H:coef1L, coef2H:coef2L; 
+.add_var    x, y, offset
+
+            SMVAGA36    input_x1:input_x0,      x
+			SMVAGA36    output_y1:output_y0,    y 
+			  
+			SMOVIL      	16,     tmp1
+			SMOVIH			0,		tmp1
+			SMOVIL			0,		tmp0
+			SMVAGA36    	tmp0:tmp1,   offset 
+			SMOVIL      	3,      tmp2
+			SMVCGC      	tmp2,   SCR
+			  
+.atandp_loop: .loop
+      
+            VLDDWM2     *x++[offset],        x1:x0 
+            VLDDWM2     *x++[offset],        x3:x2
+            VLDDWM2     *x++[offset],        x5:x4
+
+            VMOVIL      0,                   a0L
+			VMOVIH      0,                   a0L
+			VMOVIL      0,                   a0H
+			VMOVIH      0,                   a0H                 ;const = 0
+            VMOVIL      0,                   a1L
+            VMOVIH      0,                   a1L
+            VMOVIL      0,                   a1H
+            VMOVIH      0x3FF00000,          a1H                 ;const = 1     
+			
+			VMOV        a1L,                 sign0L
+			VMOV        a1H,                 sign0H
+		   	VMOV        a1L,                 sign1L
+			VMOV        a1H,                 sign1H
+			VMOV        a1L,                 sign2L
+			VMOV        a1H,                 sign2H              ;sign=1
+			
+		    VMOVIL      31,                  a31
+			VMOVIH      0,                   a31                 ;31
+			   
+			VFCMPGD     a0H:a0L, x1:x0,      cond0
+			VFCMPGD     a0H:a0L, x3:x2,      cond1
+			VFCMPGD     a0H:a0L, x5:x4,      cond2               ;g<0?
+			   
+[cond0]     VBEX        a31, sign0H,         sign0H
+[cond1]     VBEX        a31, sign1H,         sign1H
+[cond2]     VBEX        a31, sign2H,         sign2H              ;if (g<0) then sign = -sign
+	
+	        VMOV        a0L,                 flag0L
+			VMOV        a0H,                 flag0H
+			VMOV        a0L,                 flag1L
+			VMOV        a0H,                 flag1H
+			VMOV        a0L,                 flag2L
+			VMOV        a0H,                 flag2H              ;flag=0 
+			
+			VFABSD      x1:x0,               fabs0H:fabs0L
+			VFABSD      x3:x2,               fabs1H:fabs1L
+			VFABSD      x5:x4,               fabs2H:fabs2L       ;fabs(g) 
+			
+			VMOVIL      0xCCCD,              const1.05L
+			VMOVIH      0xCCCC0000,          const1.05L
+			VMOVIL      0xCCCC,              const1.05H
+			VMOVIH      0x3FF00000,          const1.05H          ;const = 1.05
+			
+			VFCMPGD     fabs0H:fabs0L, const1.05H:const1.05L,    cond0
+			VFCMPGD     fabs1H:fabs1L, const1.05H:const1.05L,    cond1
+			VFCMPGD     fabs2H:fabs2L, const1.05H:const1.05L,    cond2            ;fabs(g) > 1.05 ?
+			
+[cond0]     VMOV        a1L,                 flag0L
+[cond0]     VMOV        a1H,                 flag0H
+[cond1]     VMOV        a1L,                 flag1L
+[cond1]     VMOV        a1H,                 flag1H
+[cond2]     VMOV        a1L,                 flag2L
+[cond2]     VMOV        a1H,                 flag2H	
+
+
+[cond0]     VFRCPD      x1:x0,               x7:x6	
+[cond1]     VFRCPD      x3:x2,               x9:x8	
+[cond2]     VFRCPD      x5:x4,               x11:x10		     ;1/g 		
+
+[cond0]     VFMULD      x1:x0, x7:x6,        x13:x12
+[cond1]     VFMULD      x3:x2, x9:x8,        x15:x14
+[cond2]     VFMULD      x5:x4, x11:x10,      x17:x16             ;g*1/g 
+
+           	VMOVIL      0,                   a2L
+			VMOVIH      0,                   a2L
+			VMOVIL      0,                   a2H
+			VMOVIH      0x40000000,          a2H                 ;a2
+			
+[cond0]     VFSUBD      x13:x12, a2H:a2L,    x19:x18
+[cond1]     VFSUBD      x15:x14, a2H:a2L,    x21:x20
+[cond2]     VFSUBD      x17:x16, a2H:a2L,    x23:x22             ;2-g*1/g
+
+[cond0]     VFMULD      x7:x6, x19:x18,      x25:x24
+[cond1]     VFMULD      x9:x8, x21:x20,      x27:x26
+[cond2]     VFMULD      x11:x10, x23:x22,    x29:x28             ;1/g*(2-g*1/g)
+
+[cond0]     VFMULD      x1:x0, x25:x24,      x31:x30
+[cond1]     VFMULD      x3:x2, x27:x26,      x33:x32
+[cond2]     VFMULD      x5:x4, x29:x28,      x35:x34             ;g*1/g 
+
+[cond0]     VFSUBD      x31:x30, a2H:a2L,    x37:x36
+[cond1]     VFSUBD      x33:x32, a2H:a2L,    x39:x38
+[cond2]     VFSUBD      x35:x34, a2H:a2L,    x41:x40             ;2-g*1/g     
+			
+[cond0]     VFMULD      x25:x24, x37:x36,    x1:x0
+[cond1]     VFMULD      x27:x26, x39:x38,    x3:x2
+[cond2]     VFMULD      x29:x28, x41:x40,    x5:x4               ;1/g*(2-g*1/g)
+
+            VFMULD      x1:x0, x1:x0,        x7:x6
+			VFMULD      x3:x2, x3:x2,        x9:x8
+			VFMULD      x5:x4, x5:x4,        x11:x10             ;g2 = g * g
+
+            VFMULD      x7:x6,   x7:x6,      x13:x12
+			VFMULD      x9:x8,   x9:x8,      x15:x14
+			VFMULD      x11:x10, x11:x10,    x17:x16             ;g4 = g2 * g2
+
+            VFMULD      x7:x6,   x13:x12,    x19:x18
+			VFMULD      x9:x8,   x15:x14,    x21:x20
+			VFMULD      x11:x10, x17:x16,    x23:x22             ;g6 = g2 * g4
+
+            VFMULD      x13:x12, x13:x12,    x25:x24
+			VFMULD      x15:x14, x15:x14,    x27:x26
+			VFMULD      x17:x16, x17:x16,    x29:x28             ;g8 = g4 * g4
+	
+		    VFMULD      x13:x12, x19:x18,    x31:x30
+			VFMULD      x15:x14, x21:x20,    x33:x32
+			VFMULD      x17:x16, x23:x22,    x35:x34             ;g10 = g4 * g6
+			
+			VFMULD      x19:x18, x19:x18,    x37:x36
+			VFMULD      x21:x20, x21:x20,    x39:x38
+			VFMULD      x23:x22, x23:x22,    x41:x40             ;g12 = g6 * g6
+			
+			VMOVIL      0xA544,              c1L
+			VMOVIH      0x70280000,          c1L
+			VMOVIL      0xDAC4,              c1H
+			VMOVIH      0x3F620000,          c1H                 ;c1 = 0.00230158202
+			
+			VMOVIL      0x21C3,              c2L
+			VMOVIH      0xAB020000,          c2L
+			VMOVIL      0x8F76,              c2H
+			VMOVIH      0xBF8C0000,          c2H                 ;c2 = -0.0139455100
+			
+			VMOVIL      0xA665,              c3L
+			VMOVIH      0x74350000,          c3L
+			VMOVIL      0x286B,              c3H
+			VMOVIH      0x3FA40000,          c3H                 ;c3 = 0.03937087815832
+			
+			VMOVIL      0x9A1E,              c4L
+			VMOVIH      0xD8110000,          c4L
+			VMOVIL      0x85F7,              c4H
+			VMOVIH      0xBFB20000,          c4H                 ;c4 = -0.0723566916
+			
+			VMOVIL      0xC354,              c5L
+			VMOVIH      0xAAED0000,          c5L
+			VMOVIL      0xEF5E,              c5H
+			VMOVIH      0x3FBA0000,          c5H                 ;c5 = 0.10521499322
+			
+			VMOVIL      0x98AD,              c6L
+			VMOVIH      0xA04E0000,          c6L
+			VMOVIL      0x24E3,              c6H
+			VMOVIH      0xBFC20000,          c6H                 ;c6 = -0.14175076797
+			
+			VMOVIL      0xDF5A,              c7L
+			VMOVIH      0x17AE0000,          c7L
+			VMOVIL      0x9618,              c7H
+			VMOVIH      0x3FC90000,          c7H                 ;c7 = 0.19989300877
+			
+			VMOVIL      0x98B1,              c8L
+			VMOVIH      0x6AAE0000,          c8L
+			VMOVIL      0x5544,              c8H
+			VMOVIH      0xBFD50000,          c8H                 ;c8 = -0.3333293001
+			
+			VFMULD      c1H:c1L, x13:x12,    y1:y0 
+			VFMULD      c1H:c1L, x15:x14,    y3:y2
+			VFMULD      c1H:c1L, x17:x16,    y5:y4               ;res=c1*g4
+			
+			VFMULAD     c2H:c2L, x7:x6,   y1:y0,  y1:y0
+			VFMULAD     c2H:c2L, x9:x8,   y3:y2,  y3:y2
+			VFMULAD     c2H:c2L, x11:x10, y5:y4,  y5:y4          ;res=res+c2*g2 
+			
+			VFADDD      c3H:c3L, y1:y0,      y1:y0
+			VFADDD      c3H:c3L, y3:y2,      y3:y2
+			VFADDD      c3H:c3L, y5:y4,      y5:y4               ;res=res+c3 
+			
+			VFMULD      x37:x36, y1:y0,      y1:y0
+			VFMULD      x39:x38, y3:y2,      y3:y2
+			VFMULD      x41:x40, y5:y4,      y5:y4               ;res=res*g12 
+			
+			VFMULAD     c4H:c4L, x31:x30, y1:y0,  y1:y0
+			VFMULAD     c4H:c4L, x33:x32, y3:y2,  y3:y2
+			VFMULAD     c4H:c4L, x35:x34, y5:y4,  y5:y4          ;res=res+c4*g10     
+			
+			VFMULAD     c5H:c5L, x25:x24, y1:y0,  y1:y0
+			VFMULAD     c5H:c5L, x27:x26, y3:y2,  y3:y2
+			VFMULAD     c5H:c5L, x29:x28, y5:y4,  y5:y4          ;res=res+c5*g8
+			
+			VFMULAD     c6H:c6L, x19:x18, y1:y0,  y1:y0
+			VFMULAD     c6H:c6L, x21:x20, y3:y2,  y3:y2
+			VFMULAD     c6H:c6L, x23:x22, y5:y4,  y5:y4          ;res=res+c6*g6
+			
+			VFMULAD     c7H:c7L, x13:x12, y1:y0,  y1:y0
+			VFMULAD     c7H:c7L, x15:x14, y3:y2,  y3:y2
+			VFMULAD     c7H:c7L, x17:x16, y5:y4,  y5:y4          ;res=res+c7*g4
+			
+			VFMULAD     c8H:c8L, x7:x6,   y1:y0,  y1:y0
+			VFMULAD     c8H:c8L, x9:x8,   y3:y2,  y3:y2
+			VFMULAD     c8H:c8L, x11:x10, y5:y4,  y5:y4          ;res=res+c8*g2
+			
+			VFMULD      x1:x0, y1:y0,        y1:y0
+			VFMULD      x3:x2, y3:y2,        y3:y2
+			VFMULD      x5:x4, y5:y4,        y5:y4               ;res=res*g 
+			
+			VFADDD      x1:x0, y1:y0,        y1:y0
+			VFADDD      x3:x2, y3:y2,        y3:y2
+			VFADDD      x5:x4, y5:y4,        y5:y4               ;res=res*g+g 
+			
+			VMOVIL      0x2D18,              coef0L
+            VMOVIH      0x54440000,          coef0L
+            VMOVIL      0x21FB,              coef0H
+            VMOVIH      0x3FF90000,          coef0H               
+			
+			VMOVIL      0x2D18,              coef1L
+            VMOVIH      0x54440000,          coef1L
+            VMOVIL      0x21FB,              coef1H
+            VMOVIH      0x3FF90000,          coef1H 
+			
+			VMOVIL      0x2D18,              coef2L
+            VMOVIH      0x54440000,          coef2L
+            VMOVIL      0x21FB,              coef2H
+            VMOVIH      0x3FF90000,          coef2H              ;coef = 1.5707963267948966192313216916398
+			
+			VFCMPED     a0H:a0L, flag0H:flag0L,      cond0
+			VFCMPED     a0H:a0L, flag1H:flag1L,      cond1
+			VFCMPED     a0H:a0L, flag2H:flag2L,      cond2               ;flag=0?
+			
+[cond0]     VMOV        a0L,                 coef0L	
+[cond0]     VMOV        a0H,                 coef0H 
+[cond1]     VMOV        a0L,                 coef1L	
+[cond1]     VMOV        a0H,                 coef1H
+[cond2]     VMOV        a0L,                 coef2L	
+[cond2]     VMOV        a0H,                 coef2H	             ;if(!flag) then coef = 0
+
+            VFCMPLD     sign0H:sign0L, a0H:a0L,    cond0
+			VFCMPLD     sign1H:sign1L, a0H:a0L,    cond1
+			VFCMPLD     sign2H:sign2L, a0H:a0L,    cond2         ;sign < 0 ? 
+			
+[cond0]     VBEX        a31, coef0H,         coef0H	
+[cond1]     VBEX        a31, coef1H,         coef1H
+[cond2]     VBEX        a31, coef2H,         coef2H	             ;if(sign<0) then coef = - coef 
+
+            VFCMPED     a0H:a0L, flag0H:flag0L,      cond0
+			VFCMPED     a0H:a0L, flag1H:flag1L,      cond1
+			VFCMPED     a0H:a0L, flag2H:flag2L,      cond2               ;flag=0?
+
+[!cond0]    VFSUBD      y1:y0, coef0H:coef0L,      y1:y0 
+[!cond1]    VFSUBD      y3:y2, coef1H:coef1L,      y3:y2
+[!cond2]    VFSUBD      y5:y4, coef2H:coef2L,      y5:y4	     ;if(flag) then res=coef-res 
+
+[cond0]     VFADDD      y1:y0, coef0H:coef0L,      y1:y0
+[cond1]     VFADDD      y3:y2, coef1H:coef1L,      y3:y2
+[cond2]     VFADDD      y5:y4, coef2H:coef2L,      y5:y4	     ;if(!flag) then res=coef+res	
+
+            VSTDWM16    y1:y0,       *y++[offset]
+			VSTDWM16    y3:y2,       *y++[offset]
+			VSTDWM16    y5:y4,       *y++[offset]
+			
+			SSUBU       48, len, len 
+[len]       SBR         .atandp_loop 
+
+.endloop
+
+.size atandp, -atandp			
+			
+
+			
+			
+			
+			

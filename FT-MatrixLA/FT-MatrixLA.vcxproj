@@ -23,6 +23,7 @@
     <ProjectGuid>{E3072FCF-FD25-48AB-A36C-D792FDE638C4}</ProjectGuid>
     <RootNamespace>FTMatrixLA</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>FT-Matrix</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

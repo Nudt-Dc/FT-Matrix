@@ -1,0 +1,181 @@
+.global DSPF_sp_cholesky_in_place_cmplx
+
+.input order, input_A_am1:input_A_am0 
+.gen_var dst_imag:dst_real, saved1:saved0, mixed1:mixed0, temp1:temp0 
+.add_var A_am, L_am
+
+.gen_var i, j, k, len, end, bex
+
+.gen_var vnum_1:vnum_0, t1:t0
+.gen_var Ljj_imag:Ljj_real
+.gen_var sf0, sf1, sf2, sf3, sf4, sf5, sf6, sf7, sf8, sf9, sf10, sf11, sf12, sf13  
+.gen_var vf1, vf2, vf3, vf4, vf5, vf6, vf7, vf8, vf9
+
+.gen_var off1, off2, off3
+.add_var offset1, offset2
+
+
+;标量变量转换为基址变量，R->AR                     
+SMVAGA36 input_A_am1:input_A_am0, A_am 
+SMVAAA A_am, L_am                       
+
+
+;初始化j
+SMOVIL 0, j
+.j_loop: .loop .pipeline
+
+    ;判断循环是否结束
+    SLT j, order, end
+    [!end] SBR .j_end
+
+    SADD 1, j, off1
+    SMULIU order, off1, off1 ;off1 = (j+1)*order
+    SMVAGA32 off1, offset1
+    VLDDW *+A_am[offset1], saved1:saved0 ;保存下一行
+
+    ;初始化i
+    SMOVIL 0, i
+    .i_loop: .loop .pipeline
+
+        ;判断循环是否结束
+        SLT i, j, end
+        [!end] SBR .i_end
+        
+        ;计算偏移量
+        SMULIU i, order, off1
+        SADD off1, j, off1
+        SSHFLL 1, off1, off1 ;off1 = (i*order+j)*2
+        SMVAGA32 off1, offset1
+
+        SMOVIL 31, bex ;设置取反的位置 
+        VLDW *+L_am[offset1], t0
+        VMVCGC t0, SVR
+        SMVCCG SVR0, Ljj_real
+        SMVCCG SVR1, Ljj_imag
+        SBEX bex, Ljj_imag, Ljj_imag  ;取反
+        SVBCAST2 Ljj_imag:Ljj_real, mixed1:mixed0 ;广播
+       
+
+        ;初始化k
+        SMOVIL 0, k
+        SSUB j, order, len
+        .k1_loop: .loop .pipeline
+
+            ;判断循环是否结束
+            SLT 0, len, end
+            [!end] SBR .k1_end
+
+            SSHFLL 4, k, off3
+            SADD j, off3, off3 ;off3 = j+k*VPE_NUM
+            SMULIU i, order, off1
+            SADD off1, off3, off1 ;off1 = i*order+j+k*VPE_NUM
+            SMULIU j, order, off2
+            SADD off2, off3, off2 ;off2 = j*order+j+k*VPE_NUM
+            SMVAGA32 off1, offset1
+            SMVAGA32 off2, offset2
+
+            VLDDWM2  *+L_am[offset1], temp1:temp0
+            VFCREAL32 temp1:temp0, mixed1:mixed0, dst_real ;复数实部乘法
+            VFCIMAG32 temp1:temp0, mixed1:mixed0, dst_imag ;复数虚部乘法
+
+            VLDDWM2 *+A_am[offset2], vnum_1:vnum_0
+            VFSUBS32 dst_real, vnum_0, vnum_0
+            VFSUBS32 dst_imag, vnum_1, vnum_1
+            VSTDWM16 vnum_1:vnum_0, *+A_am[offset2] 
+
+            
+            SSUB 16, len, len
+            SADD 1, k, k 
+            SBR .k1_loop 
+        .endloop
+        .k1_end: 
+
+        SADD 1, i, i
+        SBR .i_loop
+    .endloop
+    .i_end: 
+
+
+    ;开根号
+    SMULIU j, order, off1
+    SADD off1, j, off1
+    SSHFLL 1, off1, off1 ;off1 = (j*order+j)*2
+    SMVAGA32 off1, offset1
+
+    VLDW *+L_am[offset1], t0
+    VMVCGC t0, SVR
+    SMVCCG SVR0, Ljj_real
+
+    SMOVIL 0x3f00, sf1 ;sf1 为迭代公式中的立即数 0.5
+    SSHFLL 16, sf1, sf1   
+    SMOVIL 0x3fc0, sf2 ;sf2 为迭代公式中的立即数 1.5
+    SSHFLL 16, sf2, sf2
+    SMOV Ljj_real, sf0   ;sf0 为待开方的数
+    SFRSQS32 sf0, sf3 
+    SFMULS32 sf3, sf3, sf4 
+    SFMULS32 sf1, sf0, sf5
+    SFMULS32 sf4, sf5, sf6
+    SFSUBS32 sf6, sf2, sf7
+    SFMULS32 sf7, sf3, sf8
+    SFMULS32 sf8, sf8, sf9
+    SFMULS32 sf1, sf0, sf10
+    SFMULS32 sf9, sf10, sf11
+    SFSUBS32 sf11, sf2, sf12
+    SFMULS32 sf12, sf8, sf13
+    SFMULS32 sf0, sf13, Ljj_real
+
+    
+    ;初始化k, len （/）
+    SMOVIL 0, k
+    SSUB j, order, len
+    SSHFLR 1, off1, off1
+    .k2_loop: .loop   
+
+        ;判断循环是否结束
+        SLT 0, len, end
+        [!end] SBR .k2_end
+
+        SSHFLL 4, k, off2
+        SADD off1, off2, off2  ; off2 = j*order+j+k*VPE_NUM
+        SMVAGA32 off2, offset2
+
+        ;除法
+        VLDDW *+L_am[offset2], t1:t0
+
+        VMOVIL 0x4000, vf1 
+        VSHFLL 16, vf1, vf1  
+        SVBCAST Ljj_real, vf2
+        VFRCPS32 vf2, vf3 
+        VFMULS32 vf2, vf3, vf4 
+        VFSUBS32 vf4, vf1, vf5 
+        VFMULS32 vf5, vf3, vf6 
+        VFMULS32 vf2, vf6, vf7 
+        VFSUBS32 vf7, vf1, vf8 
+        VFMULS32 vf8, vf6, vf9 
+
+        VFMULS32 t0, vf9, t0
+        VFMULS32 t1, vf9, t1
+
+        VSTDW t1:t0, *+L_am[offset2]
+
+        
+        SSUB 16, len, len
+        SADD 1, k, k
+        SBR .k2_loop 
+    .endloop
+    .k2_end: 
+
+
+    SADD 1, j, off1
+    SMULIU order, off1, off1 ;off1 = (j+1)*order
+    SMVAGA32 off1, offset1
+    VSTDW saved1:saved0, *+L_am[offset1] ;还原下一行
+
+
+    SADD 1, j, j
+    SBR .j_loop                         
+.endloop
+.j_end: 
+
+.size DSPF_sp_cholesky_in_place_cmplx, -.DSPF_sp_cholesky_in_place_cmplx 
+

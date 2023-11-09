@@ -1,0 +1,260 @@
+.global sindp
+
+.sindp:
+
+.input		len, input_x1:input_x0, output_y1:output_y0
+.gen_var	tmp0:tmp1, tmp2, x5:x4, x3:x2, x1:x0, y5:y4, y3:y2, y1:y0, a0h:a0l, a1, sign1, sign0, sign2, sign3, sign4, sign5, x7:x6, x9:x8, x11:x10, x13:x12, x15:x14, x17:x16, a2h:a2l, a3, x19:x18, x21:x20, x23:x22, a4h:a4l, x25:x24, x27:x26, x29:x28, a5h:a5l, f1:f0, f3:f2, f5:f4, a6h:a6l, g1:g0, g3:g2, g5:g4, s1:s0, s3:s2, s5:s4, a7h:a7l, s7:s6, s9:s8, s11:s10, a8h:a8l, s13:s12, s15:s14, s17:s16, a9h:a9l, a10h:a10l, s19:s18, s21:s20, s23:s22, a11h:a11l, s25:s24, s27:s26, s29:s28, a12h:a12l, s31:s30, s33:s32, s35:s34
+.add_var	x, y, offset
+
+			SMVAGA36   		 input_x1:input_x0,     x
+			SMVAGA36   		 output_y1:output_y0,   y
+			
+			SMOVIL      	16,     tmp1
+			SMOVIH			0,		tmp1
+			SMOVIL			0,		tmp0
+			SMVAGA36    	tmp0:tmp1,   offset 
+			SMOVIL      	3,      tmp2
+			SMVCGC      	tmp2,   SCR
+			
+.sindp_loop: .loop
+
+			VLDDWM2			*x++[offset],		x1:x0
+			VLDDWM2			*x++[offset],		x3:x2
+			VLDDWM2			*x++[offset],		x5:x4
+			
+			VMOVIL			0xC883, 			a0l							
+			VMOVIH			0x6DC90000, 		a0l
+			VMOVIL			0x5F30, 			a0h
+			VMOVIH			0x3FD40000, 		a0h						; a0	1/pi	VR9:VR8
+			VMOVIL			31, 				a1
+			VMOVIH			0, 					a1						; a1	VR11
+			
+			VBTST			a1,	x1,				sign0
+			VBTST			a1,	x3,				sign1
+			VBTST			a1,	x5,				sign2					; sign of arg1	VR2,VR1,VR0
+			
+			VFABSD			x1:x0,				x7:x6
+			VFABSD			x3:x2,				x9:x8
+			VFABSD			x5:x4,				x11:x10					; a=fabs(x)	VR51-VR46
+			
+			VFMULD			x7:x6,	a0h:a0l,	x13:x12
+			VFMULD			x9:x8,	a0h:a0l,	x15:x14
+			VFMULD			x11:x10,a0h:a0l,	x17:x16					; fabs(x)*a0	VR35-VR30
+			
+			VMOVIL			0, 					a2l								
+			VMOVIH			0, 					a2l
+			VMOVIL			0x2200, 			a2h
+			VMOVIH			0x40090000, 		a2h						; a2 = 3.1416015625		VR9:VR8
+			
+			VFDINT			x13:x12, 			x12
+			VFDINT			x15:x14,			x14
+			VFDINT			x17:x16,			x16						; VR35-VR30
+			
+			VMOVIL			0,					a3
+			VMOVIH			0,					a3						; a3=0   VR11
+			
+			VBTST			a3,		x12,		sign3
+			VBTST			a3,		x14,		sign4
+			VBTST			a3, 	x16,		sign5					; sign  VR5,VR4,VR3
+			
+			VFINTD			x12,				x13:x12
+			VFINTD			x14,				x15:x14
+			VFINTD			x16,				x17:x16					; z  VR35-VR30
+			
+			VXOR			sign0,	sign3,		sign0
+			VXOR			sign1,	sign4,		sign1
+			VXOR			sign2,	sign5,		sign2					; sign	VR2,VR1,VR0
+			
+			VFMULD			x13:x12, a2h:a2l,	x19:x18
+			VFMULD			x15:x14, a2h:a2l,	x21:x20
+			VFMULD			x17:x16, a2h:a2l,	x23:x22					; z*a2	VR41-VR36
+			
+			VMOVIL			0xE59F, 			a4l							
+			VMOVIH			0x4B9E0000, 		a4l
+			VMOVIL			0xAEEF, 			a4h
+			VMOVIH			0xBEE20000, 		a4h						; a4 = -8.908910206761537356617e-6 VR9:VR8
+
+			VFSUBD			x19:x18, x7:x6,		x7:x6
+			VFSUBD			x21:x20, x9:x8,		x9:x8
+			VFSUBD			x23:x22, x11:x10,	x11:x10					; a=a-z*a2  		vr51-vr46
+			
+			VFMULD			x13:x12, a4h:a4l,	x25:x24
+			VFMULD			x15:x14, a4h:a4l,	x27:x26
+			VFMULD			x17:x16, a4h:a4l,	x29:x28					; z*a4	VR41-VR36
+			
+			VFSUBD			x25:x24, x7:x6,		x7:x6
+			VFSUBD			x27:x26, x9:x8,		x9:x8
+			VFSUBD			x29:x28, x11:x10,	x11:x10					; a=a-z*a4	VR51-VR46
+			
+			VMOVIL			0xDF95, 			a5l						
+			VMOVIH			0x69930000, 		a5l
+			VMOVIL			0x80FF, 			a5h
+			VMOVIH			0x3CE80000, 		a5h						; a5 = 2.7204790957888846175e-15	VR11:VR10
+			
+			VFMULD			x7:x6, x7:x6,		f1:f0
+			VFMULD			x9:x8, x9:x8,		f3:f2
+			VFMULD			x11:x10,x11:x10,	f5:f4					; f=a*a	VR35-VR30
+			
+			VMOVIL			0xD430, 			a6l						
+			VMOVIH			0x686A0000, 		a6l
+			VMOVIL			0x123C, 			a6h
+			VMOVIH			0x3DE60000, 		a6h						; a6 = 1.6058936490371589114e-10 VR13:VR12
+			
+			VFMULD			f1:f0, f1:f0,		g1:g0
+			VFMULD			f3:f2, f3:f2,		g3:g2
+			VFMULD			f5:f4, f5:f4,		g5:g4					; g=f*f=a*4	VR41-VR36
+			
+			VMOV			a6l,				s0
+			VMOV			a6h,				s1
+			VMOV			a6l,				s2
+			VMOV			a6h,				s3
+			VMOV			a6l,				s4
+			VMOV			a6h,				s5						; s1 VR18-VR23
+
+			VMOVIL			0xF063, 			a7l						
+			VMOVIH			0xA5240000, 		a7l
+			VMOVIL			0x1DE3,			 	a7h
+			VMOVIH			0x3EC70000, 		a7h						; a7 = 2.7557319210152756119e-6	VR13:VR12
+			
+			VFMULAD			a5h:a5l, g1:g0, s1:s0, s1:s0
+			VFMULAD			a5h:a5l, g3:g2, s3:s2, s3:s2
+			VFMULAD			a5h:a5l, g5:g4, s5:s4, s5:s4				; r1	VR18-VR23
+	
+			VMOV			a7l,				s6
+			VMOV			a7h,				s7
+			VMOV			a7l,				s8
+			VMOV			a7h,				s9
+			VMOV			a7l,				s10
+			VMOV			a7h,				s11						; s2   VR29:VR24
+			
+			VMOVIL			0x10B0, 			a8l						
+			VMOVIH			0x11110000, 		a8l
+			VMOVIL			0x1111, 			a8h
+			VMOVIH			0x3F810000, 		a8h						; a8 = 8.3333333333331650314e-3	VR13:VR12
+
+			VFMULAD			s1:s0, g1:g0, s7:s6,	s7:s6
+			VFMULAD			s3:s2, g3:g2, s9:s8,	s9:s8
+			VFMULAD			s5:s4, g5:g4, s11:s10,  s11:s10				; r1	VR18-VR23
+			
+			VMOV			a8l,				s12
+			VMOV			a8h,				s13
+			VMOV			a8l,				s14
+			VMOV			a8h,				s15
+			VMOV			a8l,				s16
+			VMOV			a8h,				s17						; s3	VR18:VR23
+			
+			VFMULAD			s7:s6, g1:g0, s13:s12,	s13:s12
+			VFMULAD			s9:s8, g3:g2, s15:s14,  s15:s14
+			VFMULAD			s11:s10,g5:g4,s17:s16,	s17:s16				; r2	VR18-VR23
+			
+			VMOVIL			0x499C, 			a9l						
+			VMOVIH			0xDC080000, 		a9l
+			VMOVIL			0xE420, 			a9h
+			VMOVIH			0xBD6A0000, 		a9h						; a9 = -7.6429178068910467734e-13 VR43:VR42
+		
+			VMOVIL			0xC0AB, 			a10l						
+			VMOVIH			0x4B5D0000, 		a10l
+			VMOVIL			0xE645, 			a10h
+			VMOVIH			0xBE5A0000, 		a10h					; a10 = -2.5052106798274584544e-8 VR45:VR44
+
+			VFMULD			s13:s12, g1:g0, 	s13:s12
+			VFMULD			s15:s14, g3:g2, 	s15:s14
+			VFMULD			s17:s16, g5:g4,		s17:s16					; r1  VR18-VR23
+			
+			VMOV			a10l, 				s18
+			VMOV			a10h,				s19
+			VMOV			a10l, 				s20
+			VMOV			a10h,				s21
+			VMOV			a10l, 				s22
+			VMOV			a10h,				s23						; s4	VR29-VR24
+			
+			VMOVIL			0x3E1A, 			a11l						
+			VMOVIH			0x1A010000, 		a11l
+			VMOVIL			0x01A0, 			a11h
+			VMOVIH			0xBF2A0000, 		a11h					; a11 = -1.9841269841201840457e-4	VR45:VR44
+
+			VFMULAD			a9h:a9l, g1:g0, s19:s18,	s19:s18
+			VFMULAD			a9h:a9l, g3:g2, s21:s20,	s21:s20
+			VFMULAD			a9h:a9l, g5:g4, s23:s22,	s23:s22			; r2  VR17-VR12
+			
+			VMOV			a11l,				s24
+			VMOV			a11h,				s25
+			VMOV			a11l,				s26
+			VMOV			a11h,				s27
+			VMOV			a11l,				s28
+			VMOV			a11h,				s29						; s5	VR29-VR24
+			
+			VMOVIL			0x5555, 			a12l						
+			VMOVIH			0x55550000, 		a12l
+			VMOVIL			0x5555, 			a12h
+			VMOVIH			0xBFC50000, 		a12h					; a12 = -1.6666666666666665052e-1	VR45:VR44
+		
+			VFMULAD			s19:s18, g1:g0, s25:s24,	s25:s24
+			VFMULAD			s21:s20, g3:g2, s27:s26,	s27:s26
+			VFMULAD			s23:s22, g5:g4, s29:s28,	s29:s28			;  r2   VR29-VR24
+			
+			VMOV			a12l,				s30
+			VMOV			a12h,				s31
+			VMOV			a12l,				s32
+			VMOV			a12h,				s33
+			VMOV			a12l,				s34
+			VMOV			a12h,				s35						; s6 	VR29-VR24
+			
+			VFMULAD			s25:s24, g1:g0, s31:s30,	s31:s30
+			VFMULAD			s27:s26, g3:g2, s33:s32,	s33:s32
+			VFMULAD			s29:s28, g5:g4, s35:s34,	s35:s34			; r2	VR29-VR24
+			
+			VFMULD			s31:s30, f1:f0,		s31:s30
+			VFMULD			s33:s32, f3:f2,		s33:s32
+			VFMULD			s35:s34, f5:f4,		s35:s34					; r2	VR29-VR24
+			
+			VFADDD			s13:s12, s31:s30,	y1:y0
+			VFADDD			s15:s14, s33:s32,	y3:y2
+			VFADDD			s17:s16, s35:s34,	y5:y4					; y	
+			
+			VFMULD			y1:y0, x7:x6,		y1:y0
+			VFMULD			y3:y2, x9:x8,		y3:y2
+			VFMULD			y5:y4, x11:x10,		y5:y4					; y=y*a
+			
+			VFADDD			y1:y0, x7:x6,		y1:y0
+			VFADDD			y3:y2, x9:x8,		y3:y2
+			VFADDD			y5:y4, x11:x10,		y5:y4					; y=y*a+a			
+
+[sign0]		VBEX			a1, y1,				y1
+[sign1]		VBEX			a1, y3,				y3
+[sign2]		VBEX			a1, y5,				y5						
+
+			VSTDWM16		y1:y0,	*y++[offset]
+			VSTDWM16		y3:y2,	*y++[offset]
+			VSTDWM16		y5:y4,	*y++[offset]
+			SSUBU			48,	len,	len
+[len]		SBR				.sindp_loop
+
+.endloop
+
+.size	sindp, -.sindp			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			

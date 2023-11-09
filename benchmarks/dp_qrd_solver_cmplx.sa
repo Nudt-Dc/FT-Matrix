@@ -1,0 +1,515 @@
+;线性汇编器bug描述：
+;模4指令和模16指令一体使用，且有先后顺序，线性汇编器会把顺序颠倒
+;先后顺序是指在模4指令中，虽然VLDDW0M4，VLDDW1M4并行一体使用，但VLDDW0M4必须在VLDDW1M4前面
+;即必须保证在输出代码中，VLDDW0M4在VLDDW1M4前面
+;本代码中共有5对模4和模16指令
+
+.global DSPF_dp_qrd_solver_cmplx
+
+.input Input_Nrows, Input_Ncols, Input_Q1:Input_Q0, Input_R1:Input_R0, R_ddr1:R_ddr0, Input_b1:Input_b0, Input_x1:Input_x0
+
+;传入的矩阵地址
+.add_var address_Q, address_R, address_R_ddr                     ;传入的矩阵地址
+.add_var address_b, address_x                                    ;一维向量的地址
+
+;用于访存的基址变量，循环前需要赋初值
+.add_var addr_y, addr_x
+.add_var addr_R, addr_Q
+
+;偏移
+.add_var offset16, offset32, offset_col2, offset_row
+
+;标量临时寄存器
+.gen_var temp, tempB:tempA, Vector_Size, Vnum31, Number0
+
+;SVR
+.gen_var sum_real1:sum_real0, sum_imag1:sum_imag0
+.gen_var A1:A0, B1:B0, C1:C0, D1:D0, E1:E0, F1:F0, G1:G0, H1:H0
+.gen_var I1:I0, J1:J0, K1:K0, L1:L0, M1:M0, N1:N0, O1:O0, P1:P0
+
+;计算
+.gen_var a1:a0,b1:b0,c1:c0,d1:d0
+.gen_var BD1:BD0, AC1:AC0, AD1:AD0, BC1:BC0
+.gen_var dst_real1:dst_real0, dst_imag1:dst_imag0
+.gen_var x_real1:x_real0, x_imag1:x_imag0
+.gen_var Vtemp
+.gen_var double2_B:double2_A   ;Newton
+.gen_var cd1:cd0, cd3:cd2  ;平方和
+
+;广播
+.gen_var b_real1:b_real0, b_imag1:b_imag0
+.gen_var h_real1:h_real0, h_imag1:h_imag0
+
+.gen_var tempQ_imag1:tempQ_imag0, tempQ_real1:tempQ_real0
+.gen_var tempR_imag1:tempR_imag0, tempR_real1:tempR_real0
+
+;循环
+.gen_var judge, k, row
+
+;以下为传入的矩阵、向量地址
+SMVAGA36    Input_Q1:Input_Q0, address_Q
+SMVAGA36    Input_R1:Input_R0, address_R
+SMVAGA36    R_ddr1:R_ddr0, address_R_ddr 
+SMVAGA36    Input_b1:Input_b0, address_b 
+SMVAGA36    Input_x1:Input_x0, address_x
+SMVAGA36    Input_Q1:Input_Q0, addr_Q
+
+;让线性汇编其确定变量的类型
+VLDDW *+address_R[0], h_real1:h_real0
+VLDDW *+address_Q[0], h_real1:h_real0
+SLDDW *+address_R_ddr[0], tempB:tempA
+SLDDW *+address_x[0], tempB:tempA
+
+;以下为变量赋值
+
+SMOVIL      0, Number0
+SMOVIH      0, Number0
+
+VMOVIL      31, Vnum31
+VMOVIH      0, Vnum31
+
+SMOVIL      0, tempB
+SMOVIH      0, tempB
+
+SMOVIL      16, tempA
+SMOVIH      0, tempA
+SMVAGA36    tempB:tempA, offset16
+
+SMOVIL      32, tempA
+SMVAGA36    tempB:tempA, offset32
+
+SADD        Input_Ncols, Input_Ncols, tempA
+SADD        2, tempA, tempA
+SMVAGA36    tempB:tempA, offset_col2
+
+;----------------  Vector_Size start  ----------------;
+
+SADD        15, Input_Ncols, Vector_Size
+
+SMOVIL      0, temp
+SMOVIH      0, temp 
+
+    ;以下循环实现 temp = Vector_Size / 16
+    .GEMMV_LOOP: .loop
+    SSUB    16, Vector_Size, Vector_Size
+    SADD    1, temp, temp
+    SLT     15, Vector_Size, judge             
+    [judge]    SBR     .GEMMV_LOOP              
+    .endloop
+
+SMOV    temp, Vector_Size  ;Vector_Size = temp;
+
+;-----------------  Vector_Size end  -----------------;
+
+;----------------  对x_AM、y_AM赋初值0 start ----------------;
+
+;为 addr_x 赋值
+SMOVIL      0x40070000, tempA
+SMOVIH      0x40070000, tempA
+SMVAGA36    tempB:tempA, addr_x
+
+;为 addr_y 赋值
+SMOVIL      0x40078000, tempA
+SMOVIH      0x40078000, tempA
+SMVAGA36    tempB:tempA, addr_y
+
+VMOVIL      0, h_real0
+VMOVIH      0, h_real0
+VMOVIL      0, h_real1
+VMOVIH      0, h_real1
+
+SMOVIL      0, k
+SMOVIH      0, k
+
+.LOOP0: .loop
+
+    VSTDW       h_real1:h_real0, *addr_x++[offset16]
+    VSTDW       h_real1:h_real0, *addr_x++[offset16]
+
+    VSTDW       h_real1:h_real0, *addr_y++[offset16]
+    VSTDW       h_real1:h_real0, *addr_y++[offset16]
+
+SADD        1, k, k   
+SLT         k, Vector_Size, judge
+[judge] SBR    .LOOP0
+.endloop
+
+;----------------  对x_AM、y_AM赋初值0 end ----------------;
+
+SMOVIL      0, row
+SMOVIH      0, row
+
+.LOOPa1: .loop
+
+    SLDDW      *address_b++[1], b_real1:b_real0
+    SLDDW      *address_b++[1], b_imag1:b_imag0
+
+    ;广播
+    SVBCAST2    b_real1:b_real0, h_real1:h_real0
+    SVBCAST2    b_imag1:b_imag0, h_imag1:h_imag0
+
+    SMOVIL      0, k
+    SMOVIH      0, k
+
+    ;为 addr_Q 赋值
+    SMULISU     row, Input_Ncols, tempA
+    SMULISU     16, tempA, tempA
+    SADDA       tempB:tempA, address_Q, addr_Q
+
+    ;为 addr_y 赋值
+    SMOVIL      0x40078000, tempA
+    SMOVIH      0x40078000, tempA
+    SMVAGA36    tempB:tempA, addr_y
+
+    .LOOPa2: .loop
+
+        VLDDW1M4     *+addr_Q[offset16] , tempQ_imag1:tempQ_imag0
+        VLDDW0M4     *addr_Q++[offset32] , tempQ_real1:tempQ_real0
+
+        VBEX         Vnum31, tempQ_imag1, tempQ_imag1  ;虚部取反
+
+        ;双精度复数乘法
+        VFMULD       h_real1:h_real0, tempQ_real1:tempQ_real0, AC1:AC0
+        VFMULD       h_real1:h_real0, tempQ_imag1:tempQ_imag0, AD1:AD0
+        VFMULD       h_imag1:h_imag0, tempQ_real1:tempQ_real0, BC1:BC0
+        VFMULD       h_imag1:h_imag0, tempQ_imag1:tempQ_imag0, BD1:BD0
+
+        VFSUBD       BD1:BD0, AC1:AC0, dst_real1:dst_real0
+        VFADDD       AD1:AD0, BC1:BC0, dst_imag1:dst_imag0
+
+        ;模4取和模16存
+        VLDDW1M4     *+addr_y[offset16],tempQ_imag1:tempQ_imag0
+        VLDDW0M4     *+addr_y[0],tempQ_real1:tempQ_real0
+
+        VFADDD       tempQ_real1:tempQ_real0, dst_real1:dst_real0, dst_real1:dst_real0
+        VFADDD       tempQ_imag1:tempQ_imag0, dst_imag1:dst_imag0, dst_imag1:dst_imag0
+
+        VSTDW1M16    dst_imag1:dst_imag0, *+addr_y[offset16]
+        VSTDW0M16    dst_real1:dst_real0, *addr_y++[offset32]
+        
+
+    SADD        1, k, k   
+    SLT         k, Vector_Size, judge
+    [judge] SBR    .LOOPa2
+    .endloop
+
+SADD        1, row, row                   ;row += 1
+SLT         row, Input_Nrows, judge       ;if(row < Nrows) judge = 1
+[judge] SBR     .LOOPa1                   ;循环c跳转
+.endloop                                  ;循环c结束
+
+
+;为基址变量重新赋初值
+;address_x 初值为 x[2 * (Nrow-1)]  标量
+;address_y 初值为 y[2 * (Nrow-1)]  标量
+;address_R_ddr 初值为 R[2 * row + row * Ncols * 2]  标量
+;为addr_y赋值，初值为 y[Nrow -1]
+
+SMOVIL      0, tempB
+SMOVIH      0, tempB
+
+SMOVIL      0x40078000, tempA
+SMOVIH      0x40078000, tempA
+SMVAGA36    tempB:tempA, addr_y
+
+
+SSUB        1, Input_Nrows, tempA
+SMULISU     16, tempA, tempA
+;SADDA       tempB:tempA, address_y, address_y
+SADDA       tempB:tempA, addr_y, addr_y
+SADDA       tempB:tempA, address_x, address_x
+
+SSUB        1, Input_Nrows, tempA
+SADD        1, Input_Ncols, temp
+SMULISU     temp, tempA, tempA  ;R[row + row * Ncols]，共(Nrows - 1) * (Ncols + 1) 个复数
+SMULISU     16, tempA, tempA
+SADDA       tempB:tempA, address_R_ddr, address_R_ddr
+
+SSUB        1, Input_Nrows, row
+
+.LOOPb1: .loop
+
+    SMOVIL      0, k
+    SMOVIH      0, k
+
+    ;为 addr_x 赋值
+    SMOVIL      0x40070000, tempA
+    SMOVIH      0x40070000, tempA
+    SMVAGA36    tempB:tempA, addr_x
+
+    ;为 addr_R 赋值
+    SMULISU     row, Input_Ncols, tempA
+    SMULISU     16, tempA, tempA
+    SADDA       tempB:tempA, address_R, addr_R
+
+    VMOVIL     0, dst_real1
+    VMOVIH     0, dst_real1
+    
+    VMOV       dst_real1, dst_real0
+    VMOV       dst_real1, dst_imag0
+    VMOV       dst_real1, dst_imag1
+
+    .LOOPb2: .loop
+
+        VLDDW1M4     *+addr_x[offset16] , x_imag1:x_imag0
+        VLDDW0M4     *addr_x++[offset32] , x_real1:x_real0
+
+        VLDDW1M4     *+addr_R[offset16] , tempR_imag1:tempR_imag0
+        VLDDW0M4     *addr_R++[offset32] , tempR_real1:tempR_real0
+
+        ;双精度复数乘法
+        VFMULD       x_real1:x_real0, tempR_real1:tempR_real0, AC1:AC0
+        VFMULD       x_real1:x_real0, tempR_imag1:tempR_imag0, AD1:AD0
+        VFMULD       x_imag1:x_imag0, tempR_real1:tempR_real0, BC1:BC0
+        VFMULD       x_imag1:x_imag0, tempR_imag1:tempR_imag0, BD1:BD0
+
+        VFSUBD       BD1:BD0, AC1:AC0, tempR_real1:tempR_real0
+        VFADDD       AD1:AD0, BC1:BC0, tempR_imag1:tempR_imag0
+
+        VFADDD       tempR_real1:tempR_real0, dst_real1:dst_real0, dst_real1:dst_real0
+        VFADDD       tempR_imag1:tempR_imag0, dst_imag1:dst_imag0, dst_imag1:dst_imag0
+
+    SADD        1, k, k   
+    SLT         k, Vector_Size, judge
+    [judge] SBR    .LOOPb2
+    .endloop
+
+    ;- - - - - - - - 实部加法 - - - - - - - -;
+
+    VMVCGC      dst_real0, SVR
+
+    SMVCCG      SVR0, A0
+    SMVCCG      SVR1, B0
+    SMVCCG      SVR2, C0
+    SMVCCG      SVR3, D0
+    SMVCCG      SVR4, E0
+    SMVCCG      SVR5, F0
+    SMVCCG      SVR6, G0
+    SMVCCG      SVR7, H0
+    SMVCCG      SVR8, I0
+    SMVCCG      SVR9, J0
+    SMVCCG      SVR10, K0
+    SMVCCG      SVR11, L0
+    SMVCCG      SVR12, M0
+    SMVCCG      SVR13, N0
+    SMVCCG      SVR14, O0
+    SMVCCG      SVR15, P0
+
+    .label1:
+
+    VMVCGC      dst_real1, SVR
+
+    SMVCCG      SVR0, A1
+    SMVCCG      SVR1, B1
+    SMVCCG      SVR2, C1
+    SMVCCG      SVR3, D1
+    SMVCCG      SVR4, E1
+    SMVCCG      SVR5, F1
+    SMVCCG      SVR6, G1
+
+    ;SFADDA双精度指令的读写窗口为两拍
+    ;注意混用.M1和.M2功能单元
+    SMVCCG      SVR7, H1
+    SFADDD      A1:A0, F1:F0, A1:A0
+
+    SMVCCG      SVR8, I1
+    SFADDD      B1:B0, G1:G0, B1:B0
+
+    SMVCCG      SVR9, J1
+    SFADDD      C1:C0, H1:H0, C1:C0
+
+    SMVCCG      SVR10, K1
+    SFADDD      D1:D0, I1:I0, D1:D0
+
+    SMVCCG      SVR11, L1
+    SFADDD      E1:E0, J1:J0, E1:E0
+
+    SMVCCG      SVR12, M1
+    SFADDD      A1:A0, K1:K0, A1:A0
+
+    SMVCCG      SVR13, N1
+    SFADDD      B1:B0, L1:L0, B1:B0
+
+    SMVCCG      SVR14, O1
+    SFADDD      C1:C0, M1:M0, C1:C0
+
+    SMVCCG      SVR15, P1
+    SFADDD      D1:D0, N1:N0, D1:D0
+
+    SFADDD      E1:E0, O1:O0, E1:E0
+
+    SFADDD      A1:A0, P1:P0, A1:A0
+
+    SFADDD      B1:B0, C1:C0, B1:B0   ; B += C
+
+    SFADDD      D1:D0, E1:E0, D1:D0   ; D += E
+
+    SFADDD      A1:A0, B1:B0, A1:A0   ; A += B
+
+    SFADDD      A1:A0, D1:D0, A1:A0   ; A += D
+
+    SMOV        A1, sum_real1
+    SMOV        A0, sum_real0
+
+    .label2:
+
+    ;- - - - - - - - 虚部加法 - - - - - - - -;
+
+    VMVCGC      dst_imag0, SVR
+
+    SMVCCG      SVR0, A0
+    SMVCCG      SVR1, B0
+    SMVCCG      SVR2, C0
+    SMVCCG      SVR3, D0
+    SMVCCG      SVR4, E0
+    SMVCCG      SVR5, F0
+    SMVCCG      SVR6, G0
+    SMVCCG      SVR7, H0
+    SMVCCG      SVR8, I0
+    SMVCCG      SVR9, J0
+    SMVCCG      SVR10, K0
+    SMVCCG      SVR11, L0
+    SMVCCG      SVR12, M0
+    SMVCCG      SVR13, N0
+    SMVCCG      SVR14, O0
+    SMVCCG      SVR15, P0
+
+    .label3:
+
+    VMVCGC      dst_imag1, SVR
+
+    SMVCCG      SVR0, A1
+    SMVCCG      SVR1, B1
+    SMVCCG      SVR2, C1
+    SMVCCG      SVR3, D1
+    SMVCCG      SVR4, E1
+    SMVCCG      SVR5, F1
+    SMVCCG      SVR6, G1
+
+    ;SFADDA双精度指令的读写窗口为两拍
+    ;注意混用.M1和.M2功能单元
+    SMVCCG      SVR7, H1
+    SFADDD      A1:A0, F1:F0, A1:A0
+
+    SMVCCG      SVR8, I1
+    SFADDD      B1:B0, G1:G0, B1:B0
+
+    SMVCCG      SVR9, J1
+    SFADDD      C1:C0, H1:H0, C1:C0
+
+    SMVCCG      SVR10, K1
+    SFADDD      D1:D0, I1:I0, D1:D0
+
+    SMVCCG      SVR11, L1
+    SFADDD      E1:E0, J1:J0, E1:E0
+
+    SMVCCG      SVR12, M1
+    SFADDD      A1:A0, K1:K0, A1:A0
+
+    SMVCCG      SVR13, N1
+    SFADDD      B1:B0, L1:L0, B1:B0
+
+    SMVCCG      SVR14, O1
+    SFADDD      C1:C0, M1:M0, C1:C0
+
+    SMVCCG      SVR15, P1
+    SFADDD      D1:D0, N1:N0, D1:D0
+
+    SFADDD      E1:E0, O1:O0, E1:E0
+
+    SFADDD      A1:A0, P1:P0, A1:A0
+
+    SFADDD      B1:B0, C1:C0, B1:B0   ; B += C
+
+    SFADDD      D1:D0, E1:E0, D1:D0   ; D += E
+
+    SFADDD      A1:A0, B1:B0, A1:A0   ; A += B
+
+    SFADDD      A1:A0, D1:D0, A1:A0   ; A += D
+
+    SMOV        A1, sum_imag1
+    SMOV        A0, sum_imag0
+
+    .label4:
+
+    ;- - - - - - - - SVR end - - - - - - - -;
+
+    ;address_x 初值为 x[2 * row]  标量
+    ;address_R_ddr 初值为 R[2 * row + row * Ncols * 2];
+
+    ;取y, AM --> SVR --> R
+    VLDW          *addr_y--[4], Vtemp
+    VMVCGC        Vtemp, SVR
+
+    SMVCCG        SVR0, a0
+    SMVCCG        SVR1, a1
+    SMVCCG        SVR2, b0
+    SMVCCG        SVR3, b1
+
+    SLDDW      *+address_R_ddr[1], d1:d0 
+    SLDDW      *address_R_ddr--[offset_col2], c1:c0
+
+    SFSUBD     sum_real1:sum_real0, a1:a0, a1:a0
+    SFSUBD     sum_imag1:sum_imag0, b1:b0, b1:b0
+
+    SFMULD     c1:c0, c1:c0, cd1:cd0
+    SFMULAD    d1:d0, d1:d0, cd1:cd0, cd1:cd0  ;c*c+d*d
+
+    ;Newton-Rhason迭代
+
+    SMOVIL      0, double2_A
+    SMOVIH      0, double2_A
+    SMOVIL      0x40000000, double2_B
+    SMOVIH      0x40000000, double2_B
+
+    SFRCPD       cd1:cd0, cd3:cd2  ;平方和倒数
+
+    ;迭代第一次
+    SFMULD       cd1:cd0, cd3:cd2, tempB:tempA          
+    SFSUBD       tempB:tempA, double2_B:double2_A, tempB:tempA
+    SFMULD       cd3:cd2, tempB:tempA, cd3:cd2
+
+    ;迭代第二次
+    SFMULD       cd1:cd0, cd3:cd2, tempB:tempA          
+    SFSUBD       tempB:tempA, double2_B:double2_A, tempB:tempA
+    SFMULD       cd3:cd2, tempB:tempA, cd3:cd2 
+    ;Newton-Rhason迭代结束
+    
+    SFMULD     a1:a0, c1:c0, A1:A0    ;a*c
+    SFMULAD    b1:b0, d1:d0, A1:A0, A1:A0 ;a*c + b*d
+
+    SFMULD     a1:a0, d1:d0, B1:B0    ;a*d
+    SFMULBD    b1:b0, c1:c0, B1:B0, B1:B0 ;b*c - a*d
+
+    SFMULD     cd3:cd2, A1:A0, C1:C0  ;实部结果
+    SFMULD     cd3:cd2, B1:B0, D1:D0  ;虚部结果
+
+    SSTDW      D1:D0, *+address_x[1]  ;存回虚部
+    SSTDW      C1:C0, *address_x--[2] ;存回实部
+
+    ;x_ddr --> x_AM
+
+    SMOVIL      0x0, tempB
+    SMOVIH      0x0, tempB
+    SMOVIL      0x40070000, tempA
+    SMOVIH      0x40070000, tempA
+    SMVAGA36    tempB:tempA, addr_x
+    SMULISU     4, row, tempA
+    SMVAGA36    tempB:tempA, offset_row
+    VLDW       *+addr_x[offset_row], Vtemp
+
+    VMVCGC      Vtemp, SVR
+    SMVCGC      C0, SVR0
+    SMVCGC      C1, SVR1
+    SMVCGC      D0, SVR2
+    SMVCGC      D1, SVR3
+    VMVCCG      SVR, Vtemp
+    VSTW        Vtemp,  *+addr_x[offset_row]
+
+SSUB        1, row, row    
+SLT         row, Number0, judge
+[!judge] SBR    .LOOPb1       
+.endloop                         
+
+
+.size DSPF_dp_qrd_solver_cmplx, -.DSPF_dp_qrd_solver_cmplx

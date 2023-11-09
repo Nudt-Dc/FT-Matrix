@@ -1,0 +1,178 @@
+.global vsip_vindexbool
+
+.input    input_vp1:input_vp2,input_xp1:input_xp2,num
+.gen_var  n, retval, mid, tmp_vp, loop_vp, loop_bool, shuff_add1:shuff_add0, num16, loop_16
+.add_var vp_add, xp_add, OR_16
+
+SMVAGA36    input_vp1:input_vp2, vp_add
+SMVAGA36    input_xp1:input_xp2, xp_add
+
+SMOVIL	    0, n
+SMOVIH      0, n
+SADD        0,n,retval
+
+SADD        0,n,shuff_add1
+SMOVIL      16,shuff_add0
+SMOVIH      0,shuff_add0
+SMVAGA36    shuff_add1:shuff_add0,OR_16
+
+
+.boolloop     .loop
+SSUB        n,num,num16
+SLT         16, num16, loop_16
+[loop_16]   SBR  .A1
+            .boolloop2  .loop
+            VLDW        *vp_add++[1],tmp_vp
+            VMVCGC      tmp_vp,SVR
+            ;0
+            SMVCCG      SVR0,mid
+            SEQ         0,mid,loop_vp
+            [loop_vp]   SBR .L16
+            SSTW        n,*xp_add++[1]
+            SADD        1,retval,retval
+            .L16:
+            SADD        1,n,n
+            SLT         n,num,loop_bool
+            [loop_bool] SBR .boolloop2
+            .endloop
+            SBR    .A2
+.A1:
+VLDW        *vp_add++[OR_16],tmp_vp
+VMVCGC      tmp_vp,SVR
+;0
+SMVCCG      SVR0,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L0
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L0:
+SADD        1,n,n
+;1
+SMVCCG      SVR1,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L1
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L1:
+SADD        1,n,n
+;2
+SMVCCG      SVR2,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L2
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L2:
+SADD        1,n,n
+;3
+SMVCCG      SVR3,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L3
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L3:
+SADD        1,n,n
+;4
+SMVCCG      SVR4,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L4
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L4:
+SADD        1,n,n
+;5
+SMVCCG      SVR5,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L5
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L5:
+SADD        1,n,n
+;6
+SMVCCG      SVR6,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L6
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L6:
+SADD        1,n,n
+;7
+SMVCCG      SVR7,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L7
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L7:
+SADD        1,n,n
+;8
+SMVCCG      SVR8,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L8
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L8:
+SADD        1,n,n
+;9
+SMVCCG      SVR9,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L9
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L9:
+SADD        1,n,n
+;10
+SMVCCG      SVR10,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L10
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L10:
+SADD        1,n,n
+;11
+SMVCCG      SVR11,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L11
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L11:
+SADD        1,n,n
+;12
+SMVCCG      SVR12,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L12
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L12:
+SADD        1,n,n
+;13
+SMVCCG      SVR13,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L13
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L13:
+SADD        1,n,n
+;14
+SMVCCG      SVR14,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L14
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L14:
+SADD        1,n,n
+;15
+SMVCCG      SVR15,mid
+SEQ         0,mid,loop_vp
+[loop_vp]   SBR .L15
+SSTW        n,*xp_add++[1]
+SADD        1,retval,retval
+.L15:
+SADD        1,n,n
+.A2:
+SLT  n,num,loop_bool
+[loop_bool] SBR .boolloop
+.endloop
+
+.output retval
+
+.size vsip_vindexbool, -.vsip_vindexbool
+

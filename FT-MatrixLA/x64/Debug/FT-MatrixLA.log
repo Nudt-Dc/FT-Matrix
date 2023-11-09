@@ -1,2 +1,164 @@
-﻿  main.cpp
-  FT-MatrixLA.vcxproj -> E:\学习文件\TODAES\FT-Matrix\x64\Debug\FT-MatrixLA.exe
+﻿D:\Program\VisualStudio2022\MSBuild\Microsoft\VC\v170\Microsoft.CppBuild.targets(514,5): warning MSB8028: 中间目录(x64\Debug\)包含从另一个项目(FT-MatrixLA.vcxproj)共享的文件。   这会导致错误的清除和重新生成行为。
+  aliveness_analysis.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(117,5): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(233,10): warning C4267: “参数”: 从“size_t”转换到“const int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(271,2): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(275,163): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(278,132): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(221,12): warning C4101: “jj”: 未引用的局部变量
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(356,48): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(358,16): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\aliveness_analysis.cpp(438,2): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+  analyser.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1116,17): warning C4129: “[”: 不可识别的字符转义序列
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1117,17): warning C4129: “[”: 不可识别的字符转义序列
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1117,17): warning C4129: “(”: 不可识别的字符转义序列
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1143,40): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1334,70): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1344,24): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1350,24): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1369,25): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1376,25): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1392,24): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1403,24): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1409,24): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1430,25): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1436,25): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1448,23): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1452,22): warning C4267: “+=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(930,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(975,3): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1137,3): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1142,16): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1155,18): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1191,17): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1204,17): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1216,19): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1249,18): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1260,14): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1270,16): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1297,15): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1304,14): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1314,16): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1322,15): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1328,4): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1459,4): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1462,4): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1469,4): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1472,4): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1475,4): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1481,4): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1725,15): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1733,16): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1736,6): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\analyser.cpp(1738,10): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  build_dependency.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(21,44): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(238,32): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(242,32): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(256,32): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(266,31): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(279,32): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(290,32): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(291,15): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(222,9): warning C4101: “ii”: 未引用的局部变量
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(469,4): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\build_dependency.cpp(447,12): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  data_structure.cpp
+  ins_rescheduling.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_rescheduling.cpp(86,57): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_rescheduling.cpp(92,73): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+  ins_scheduling.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(17,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(18,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(33,2): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(147,32): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(263,6): warning C4101: “pos”: 未引用的局部变量
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(401,5): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(459,5): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(365,15): warning C4101: “x”: 未引用的局部变量
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\ins_scheduling.cpp(575,7): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  loop_unrolling.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(20,95): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(218,52): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(249,54): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(299,9): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(362,5): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(368,5): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(394,5): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(400,5): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(633,101): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(654,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\loop_unrolling.cpp(663,101): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  main.cpp
+  reference.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\reference.cpp(490,22): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\reference.cpp(497,16): warning C4996: 'fscanf': This function or variable may be unsafe. Consider using fscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  register_assignment.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(77,3): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(78,3): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(93,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(94,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(101,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(102,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(109,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(110,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(125,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(126,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(144,38): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(165,3): warning C4474: printf: 格式字符串中传递的参数太多
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(165,3): message : 占位符和其参数预计 3 可变参数，但提供的却是 4 参数
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(175,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(176,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(206,2): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(344,3): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(584,43): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(659,4): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(705,3): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(837,67): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(1528,85): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(1686,42): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(1735,42): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(1778,41): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(1880,106): warning C4267: “参数”: 从“size_t”转换到“const int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(2207,47): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(2259,3): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(2291,3): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(2197,20): warning C4101: “fix_address”: 未引用的局部变量
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\register_assignment.cpp(2350,40): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  software_pipeline.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(516,15): warning C4101: “x”: 未引用的局部变量
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(636,22): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(707,29): warning C4244: “初始化”: 从“__int64”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(708,61): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(712,47): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(719,19): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(723,47): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(730,19): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(734,47): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(741,19): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(745,45): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(752,19): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(708,8): warning C4101: “leaf_offset”: 未引用的局部变量
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(907,4): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(1250,16): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\software_pipeline.cpp(1583,16): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+  utils.cpp
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(55,3): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(130,1): warning C4477: “printf”: 格式字符串“%d”需要类型“int”的参数，但可变参数 9 拥有了类型“unsigned __int64”
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(130,1): message : 请考虑在格式字符串中使用“%zd”
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(154,2): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(164,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(165,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(166,2): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(180,26): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(251,18): warning C4477: “fprintf”: 格式字符串“%d”需要类型“int”的参数，但可变参数 1 拥有了类型“unsigned __int64”
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(251,18): message : 请考虑在格式字符串中使用“%zd”
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(282,5): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(285,5): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(304,6): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(222,16): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(329,23): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+E:\学习文件\TODAES\FT-Matrix\FT-MatrixLA\utils.cpp(330,33): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  正在生成代码...
+  FT-MatrixLA.vcxproj -> E:\学习文件\TODAES\FT-Matrix\x64\Debug\FT-Matrix.exe

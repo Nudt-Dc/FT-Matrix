@@ -1,0 +1,330 @@
+.global DSPF_sp_cholesky_cmplx 
+
+.input order, input_A_am1:input_A_am0, input_L_am1:input_L_am0 
+.gen_var dst_imag:dst_real, saved1:saved0, mixed1:mixed0, temp1:temp0 
+.add_var A_am, L_am, t_am
+
+.gen_var i, j, k, len, end, bex
+; .gen_var shuf_addr1:shuf_addr0, shuf_addr_real, shuf_addr_imag
+
+.gen_var vnum_1:vnum_0, vnum_3:vnum_2, t1:t0, zero1:zero0
+.gen_var Ljj_imag:Ljj_real
+.gen_var sf0, sf1, sf2, sf3, sf4, sf5, sf6, sf7, sf8, sf9, sf10, sf11, sf12, sf13 
+.gen_var vf1, vf2, vf3, vf4, vf5, vf6, vf7, vf8, vf9
+
+.gen_var off2:off1, off3
+.add_var offset1, offset2
+
+
+;标量变量转换为基址变量，R->AR                     
+SMVAGA36 input_A_am1:input_A_am0, A_am                                
+SMVAGA36 input_L_am1:input_L_am0, L_am
+
+VMOVIL 0, zero0
+VMOVIH 0, zero0
+VMOVIL 0, zero1
+VMOVIH 0, zero1
+
+;混洗配置
+; SMOVIL 0x0000, shuf_addr1
+; SMOVIH 0x0000, shuf_addr1
+; SMOVIL 0x0000, shuf_addr0
+; SMOVIH 0x4016, shuf_addr0
+; SMVAGA36 shuf_addr1:shuf_addr0, shuf_addr
+
+; SMOVIL 0x0000, shuf_addr_real
+; SMOVIH 0x0000, shuf_addr_real
+; SMOVIL 0x0101, shuf_addr_imag
+; SMOVIH 0x0101, shuf_addr_imag
+
+; SSTW shuf_addr_real, *+shuf_addr[0] 
+; SSTW shuf_addr_real, *+shuf_addr[1] 
+; SSTW shuf_addr_real, *+shuf_addr[2] 
+; SSTW shuf_addr_real, *+shuf_addr[3] 
+; SSTW shuf_addr_imag, *+shuf_addr[4] 
+; SSTW shuf_addr_imag, *+shuf_addr[5] 
+; SSTW shuf_addr_imag, *+shuf_addr[6] 
+; SSTW shuf_addr_imag, *+shuf_addr[7] 
+
+
+;初始化j
+SMOVIL 0, j
+.j_loop: .loop .pipeline 
+
+    SLT j, order, end
+    [!end] SBR .j_end
+
+    SMOVIL 0, off2
+    SMULIU j, order, off3
+    SSHFLL 3, off3, off1
+    SADDA off2:off1, L_am, t_am
+
+    SADD order, off3, off1
+    SMVAGA32 off1, offset1
+    VLDDW *+L_am[offset1], saved1:saved0
+
+    SMOVIL 0, k
+    SMOV order, len
+    .k0_loop: .loop .pipeline 
+
+        SLT 0, len, end
+        [!end] SBR .k0_end
+
+        SSHFLL 4, k, off1
+        SMVAGA32 off1, offset1
+        VSTDW zero1:zero0, *+t_am[offset1]
+        
+        SADD 1, k, k
+        SSUB 16, len, len
+        SBR .k0_loop
+    .endloop
+    .k0_end:
+    
+
+
+    ;lvector double* t_am = (lvector double *)((double*)L_am+j*order);	
+    ;saved = vec_ld((j+1)*order,L_am);
+    ;vsip_mfill_d_v(0,t_am,order);
+    ;vec_st(saved,(j+1)*order,L_am);
+    ;saved = vec_ld((j+1)*order,L_am); 
+
+    ;初始化i
+    SMOVIL 0, i
+    .i_loop: .loop .pipeline 
+
+        ;判断循环是否结束
+        SLT i, j, end
+        [!end] SBR .i_end
+         
+        SMULIU i, order, off1
+        SADD off1, j, off1
+        SSHFLL 1, off1, off1 ;off1 = (i*order+j)*2
+        SMVAGA32 off1, offset1
+
+        SMOVIL 31, bex
+        VLDW *+L_am[offset1], t0
+        VMVCGC t0, SVR
+        SMVCCG SVR0, Ljj_real
+        SMVCCG SVR1, Ljj_imag
+        SBEX bex, Ljj_imag, Ljj_imag  ;取反
+        SVBCAST2 Ljj_imag:Ljj_real, mixed1:mixed0 ;广播
+
+  
+        ;t0 = vec_ld((i*order+j)*2,(vector float*)L_am);	
+        ;mov_to_vlr(0x0001);
+        ;*(vector float*)((float*)&t0+1) = vec_neg(*(vector float*)((float*)&t0+1));
+        ;mov_to_vlr(0xffff);
+        ;shuff_mode(0);
+        ;*((vector float*)&temp) = vec_shufw(0,t0,t0);
+        ;shuff_mode(1);
+        ;*((vector float*)&temp+1) = vec_shufw(1,t0,t0);
+
+        ;初始化k
+        SMOVIL 0, k
+        SSUB j, order, len
+        .k1_loop: .loop .pipeline 
+
+            SLT 0, len, end
+            [!end] SBR .k1_end
+
+            SSHFLL 4, k, off2 
+            SADD j, off2, off2 ;off2 = j+k*VPE_NUM
+            SMULIU i, order, off1
+            SADD off1, off2, off1 ;off1 = j+k*VPE_NUM+i*order
+            SMVAGA32 off1, offset1
+            SMVAGA32 off2, offset2
+
+            VLDDWM2  *+L_am[offset1], temp1:temp0
+            VFCREAL32 temp1:temp0, mixed1:mixed0, dst_real
+            VFCIMAG32 temp1:temp0, mixed1:mixed0, dst_imag
+
+            VLDDWM2 *+t_am[offset2], vnum_1:vnum_0
+            VFADDS32 vnum_1, dst_imag, vnum_1
+            VFADDS32 vnum_0, dst_real, vnum_0
+            VSTDWM16 vnum_1:vnum_0, *+t_am[offset2]
+
+            ; SADDA 16, offset2, offset2
+            ; VLDW *+t_am[offset2], vnum_1
+            ; VFADDS32 vnum_1, dst_imag, vnum_1
+            ; VSTW vnum_1, *+t_am[offset2]
+
+            ;OFF_DOUBLE_PTR(L_am, j+i*order+k*VPE_NUM) = vec_ldm2 ( 0, &OFF_DOUBLE_PTR(L_am, j+i*order+k*VPE_NUM));
+            ;*dst_real = vec_fcreal32(temp, OFF_DOUBLE_PTR(L_am, j+i*order+k*VPE_NUM));
+            ;*dst_imag = vec_fcimag32(temp, OFF_DOUBLE_PTR(L_am, j+i*order+k*VPE_NUM));
+            ;vec_stm16 ( OFF_DOUBLE_PTR(L_am, j+i*order+k*VPE_NUM),0,&OFF_DOUBLE_PTR(L_am, j+i*order+k*VPE_NUM) );            
+            ;vec_stm16(dst, 0, &dst);
+            ;*((vector float*)&OFF_DOUBLE_PTR(t_am,j+k*VPE_NUM)) = vec_add (*((vector float*)&OFF_DOUBLE_PTR(t_am,j+k*VPE_NUM)),*((vector float*)&dst) );
+            ;*((vector float*)&OFF_DOUBLE_PTR(t_am,j+k*VPE_NUM)+1) = vec_add (*((vector float*)&OFF_DOUBLE_PTR(t_am,j+k*VPE_NUM)+1),*((vector float*)&dst+1) );
+            ;len -= VPE_NUM;
+
+            ;判断循环是否结束
+            SSUB 16, len, len
+            SADD 1, k, k
+            SBR .k1_loop
+        .endloop
+        .k1_end: 
+        
+
+        SADD 1, i, i
+        SBR .i_loop
+    .endloop
+    .i_end:
+     
+
+
+    ;初始化k, len (-)
+    SMOVIL 0, k
+    SSUB j, order, len
+    .k2_loop: .loop .pipeline 
+
+        SLT 0, len, end
+        [!end] SBR .k2_end
+
+        ;(-)
+        SSHFLL 4, k, off2
+        SADD j, off2, off2 ;off2 = j+k*VPE_NUM
+        SMULIU j, order, off1
+        SADD off1, off2, off1 ;off1 = j+k*VPE_NUM+j*order
+        SMVAGA32 off1, offset1
+        SMVAGA32 off2, offset2
+
+        VLDDW  *+A_am[offset1], vnum_1:vnum_0
+        VLDDW  *+t_am[offset2], vnum_3:vnum_2
+        VFSUBS32 vnum_3, vnum_1, vnum_1
+        VFSUBS32 vnum_2, vnum_0, vnum_0
+        VSTDW vnum_1:vnum_0, *+L_am[offset1]
+
+        ; SADDA 16, offset1, offset1
+        ; SADDA 16, offset2, offset2
+
+        ; VLDW  *+A_am[offset1], vnum_1
+        ; VLDW  *+t_am[offset2], vnum_2
+        ; VFSUBD32 vnum_2, vnum_1, vnum_1
+        ; VSTW vnum_1, *+L_am[offset1]			 	 
+
+        ; vsip_cvsub_f_v( &OFF_DOUBLE_PTR(A_am,j*order+j+k*VPE_NUM), 
+		; 					&OFF_DOUBLE_PTR(t_am,j+k*VPE_NUM),
+		; 					&OFF_DOUBLE_PTR(L_am,j*order+j+k*VPE_NUM), 
+		; 					VPE_NUM*2);
+
+        ;判断循环是否结束
+        SSUB 16, len, len
+        SADD 1, k, k
+        SBR .k2_loop
+    .endloop
+    .k2_end: 
+    
+
+    ;开根号
+    SMULIU j, order, off1
+    SADD off1, j, off1
+    SSHFLL 1, off1, off1 ;off1 = (j*order+j)*2
+    SMVAGA32 off1, offset1
+
+    VLDW *+L_am[offset1], t0
+    VMVCGC t0, SVR
+    SMVCCG SVR0, Ljj_real
+
+    SMOVIL 0x3f00, sf1 ;sf1 为迭代公式中的立即数 0.5
+    SSHFLL 16, sf1, sf1   
+    SMOVIL 0x3fc0, sf2 ;sf2 为迭代公式中的立即数 1.5
+    SSHFLL 16, sf2, sf2
+    SMOV Ljj_real, sf0   ;sf0 为待开方的数
+    SFRSQS32 sf0, sf3 
+    SFMULS32 sf3, sf3, sf4 
+    SFMULS32 sf1, sf0, sf5
+    SFMULS32 sf4, sf5, sf6
+    SFSUBS32 sf6, sf2, sf7
+    SFMULS32 sf7, sf3, sf8
+    SFMULS32 sf8, sf8, sf9
+    SFMULS32 sf1, sf0, sf10
+    SFMULS32 sf9, sf10, sf11
+    SFSUBS32 sf11, sf2, sf12
+    SFMULS32 sf12, sf8, sf13
+    SFMULS32 sf0, sf13, Ljj_real
+
+    
+    ;初始化k, len （/）
+    SMOVIL 0, k
+    SSUB j, order, len
+    SSHFLR 1, off1, off1
+    .k3_loop: .loop .pipeline 
+
+        SLT 0, len, end
+        [!end] SBR .k3_end
+
+        SSHFLL 4, k, off2
+        SADD off1, off2, off2  ; off2 = j*order+j+k*VPE_NUM
+        SMVAGA32 off2, offset2
+
+        ;除法
+        VLDDW *+L_am[offset2], t1:t0
+
+        VMOVIL 0x4000, vf1 
+        VSHFLL 16, vf1, vf1  
+        SVBCAST Ljj_real, vf2
+        VFRCPS32 vf2, vf3 
+        VFMULS32 vf2, vf3, vf4 
+        VFSUBS32 vf4, vf1, vf5 
+        VFMULS32 vf5, vf3, vf6 
+        VFMULS32 vf2, vf6, vf7 
+        VFSUBS32 vf7, vf1, vf8 
+        VFMULS32 vf8, vf6, vf9 
+
+        VFMULS32 t0, vf9, t0
+        VFMULS32 t1, vf9, t1
+
+        VSTDW t1:t0, *+L_am[offset2]
+
+        ; SADDA 16, offset2, offset2
+        ; VLDW *+L_am[offset2], t0
+
+        ;除法
+        ; VMOV t0, vf0 
+        ; VMOVIL 0x4000, vf1 
+        ; VSHFLL 16, vf1, vf1 
+        ; SVBCAST Ljj_real, vf2
+        ; VFRCPS32 vf2, vf3 
+        ; VFMULS32 vf2, vf3, vf4 
+        ; VFSUBS32 vf4, vf1, vf5 
+        ; VFMULS32 vf5, vf3, vf6 
+        ; VFMULS32 vf2, vf6, vf7 
+        ; VFSUBS32 vf7, vf1, vf8 
+        ; VFMULS32 vf8, vf6, vf9 
+        ; VFMULS32 vf0, vf9, vf10
+        ; VSTW vf10, *+L_am[offset2]
+
+
+        ; vsip_vsdiv_f_v(  
+        ;                 (vector float*)&OFF_DOUBLE_PTR(L_am,j*order+j+1+k*VPE_NUM),
+        ;                 ((float*)&Ljj_real)[0],
+        ;                 (vector float*)&OFF_DOUBLE_PTR(L_am,j*order+j+1+k*VPE_NUM), 
+        ;                 VPE_NUM*2);
+		
+
+        ;判断循环是否结束
+        SSUB 16, len, len
+        SADD 1, k, k
+        SBR .k3_loop 
+    .endloop
+    .k3_end: 
+    
+
+
+    SADD 1, j, off1
+    SMULIU order, off1, off1 ;off1 = (j+1)*order
+    SMVAGA32 off1, offset1
+    VSTDW saved1:saved0, *+L_am[offset1]
+
+    ;vec_st(saved,(j+1)*order,L_am);
+
+
+    ;判断循环是否结束
+    SADD 1, j, j
+    SBR .j_loop                          
+.endloop
+.j_end:
+  
+
+.size DSPF_sp_cholesky_cmplx, -.DSPF_sp_cholesky_cmplx 
+

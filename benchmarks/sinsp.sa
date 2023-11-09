@@ -1,0 +1,177 @@
+.global	sinsp
+
+.sinsp:
+
+.input		len, input_x1:input_x0, output_y1:output_y0
+.gen_var	tmp0:tmp1, tmp2, x2, x1:x0, y2, y1:y0, a0, a1, a2, a3, a4, a5, sign0, sign1, sign2, z0, z1, z2, sign3, sign4, sign5, z3, z4, z5, a6, a7, f0, f1, f2, a8, g0, g1, g2, s0, s1, s2, a9, a10, s3, s4, s5 
+.add_var	x, y, offset
+
+			SMVAGA36    	input_x1:input_x0,     x
+			SMVAGA36    	output_y1:output_y0,   y
+			
+			SMOVIL      	16,     tmp1
+			SMOVIH			0,		tmp1
+			SMOVIL			0,		tmp0
+			SMVAGA36    	tmp0:tmp1,   offset 
+			SMOVIL      	3,      tmp2
+			SMVCGC      	tmp2,   SCR
+			
+.sinsp_loop:	.loop
+
+			VLDDW			*x++[offset],			x1:x0
+			VLDW			*x++[offset],			x2
+			
+			VMOVIL			0xF983, 				a0							
+			VMOVIH			0x3EA20000, 			a0						; a0 = 1/pi	VR8
+			VMOVIL			0x0FDB, 				a1							
+			VMOVIH			0x40490000, 			a1						; a1 = pi	VR9
+			VMOVIL 			0x0FDB, 				a2						
+			VMOVIH			0x3FC90000, 			a2						; a2 = pi/2	VR10
+			VMOVIL			31, 					a3
+			VMOVIH			0, 						a3						; a3		VR11
+			
+			VBTST			a3,	x0,					sign0
+			VBTST			a3, x1,					sign1
+			VBTST			a3, x2,					sign2					; sign of arg1
+			
+			VFABSS32		x0,						x0
+			VFABSS32		x1,						x1
+			VFABSS32		x2,						x2						; fabs(x)	a
+			
+			VFMULS32		x0, a0, 				z0
+			VFMULS32		x1, a0,					z1
+			VFMULS32		x2, a0,					z2						; z=fabs(x)*a0
+			
+			VMOVIL			0x0000, 				a4							
+			VMOVIH			0x40490000, 			a4						; a4 = 3.140625  VR8
+		
+			VFSINT32		z0,						z0
+			VFSINT32		z1,						z1
+			VFSINT32		z2,						z2						; z=int(z) 37.36.35
+			
+			VMOVIL			0, 						a5
+			VMOVIH			0, 						a5						; a5=0	VR11
+			
+			VBTST			a5,	z0,					sign3
+			VBTST			a5, z1,					sign4
+			VBTST			a5, z2,					sign5					; sign'
+			
+			VFINTS32		z0,						z0
+			VFINTS32		z1,						z1
+			VFINTS32		z2,						z2						; z
+			
+			VXOR			sign0,	sign3,			sign0
+			VXOR			sign1,	sign4,			sign1
+			VXOR			sign2,	sign5,			sign2					; sign
+			
+			VFMULS32		a4,		z0,				z3
+			VFMULS32		a4,		z1,				z4
+			VFMULS32		a4,		z2,				z5						; z'=z*a4
+			
+			VMOVIL			0xAA22, 				a6							
+			VMOVIH			0x3A7D0000, 			a6						; a6 = 9.67653589793e-4	VR8
+			
+			VFSUBS32		z3,		x0,				x0
+			VFSUBS32		z4, 	x1,				x1
+			VFSUBS32		z5, 	x2,				x2						; a=a-z*a4
+			
+			VFMULS32		a6,		z0,				z3
+			VFMULS32		a6,		z1,				z4
+			VFMULS32		a6,		z2,				z5						; z*a6
+			
+			VFSUBS32		z3,	 	x0,				x0
+			VFSUBS32		z4, 	x1,				x1
+			VFSUBS32		z5, 	x2,				x2						; a=a-z*a6
+			
+			VMOVIL			0x9C5B, 				a7							
+			VMOVIH			0x362E0000, 			a7						; a7 = 2.601903036e-6	VR8
+			
+			VFMULS32		x0,		x0,				f0
+			VFMULS32		x1,		x1,				f1
+			VFMULS32		x2,		x2,				f2						; f=a*a
+			
+			VMOVIL			0x873E, 				a8							
+			VMOVIH			0x3C080000, 			a8						; a8 = 8.333025139e-3  VR9
+			
+			VFMULS32		f0,		f0,				g0
+			VFMULS32		f1,		f1,				g1
+			VFMULS32		f2,		f2,				g2						; g=f*f=a^4
+			
+			VMOV			a8,						s0
+			VMOV			a8,						s1
+			VMOV			a8,						s2						; s=a8=8.333025139e-3
+			
+			VMOVIL			0xB222, 				a9						
+			VMOVIH			0xB94F0000, 			a9						; a9 = -1.980741872e-4		VR10
+			
+			VFMULAS32		g0,	a7,	s0,				s0
+			VFMULAS32		g1,	a7,	s1,				s1
+			VFMULAS32		g2,	a7,	s2,				s2						; s=g*a7+s
+			
+			VMOVIL			0xAAA4, 				a10						
+			VMOVIH			0xBE2A0000, 			a10						; a10 = -1.666665668e-1		VR11
+			
+			VMOV			a10,					s3
+			VMOV			a10,					s4
+			VMOV			a10,					s5						; s'=a10 
+			
+			VFMULAS32		g0, a9,	s3,				s3
+			VFMULAS32		g1, a9, s4, 			s4
+			VFMULAS32		g2, a9, s5,				s5						; s'=g*a9+s'
+			
+			VFMULS32		s0, 	g0, 			s0
+			VFMULS32		s1,		g1,				s1
+			VFMULS32		s2,		g2,				s2						; s*g
+			
+			VFMULS32		s3,		f0,				s3
+			VFMULS32		s4,		f1,				s4
+			VFMULS32		s5,		f2,				s5						; s'*f
+			
+			VFADDS32		s0,		s3,				y0
+			VFADDS32		s1,		s4,				y1
+			VFADDS32		s2,		s5,				y2						; y=s+s'
+			
+			VFMULS32		y0,		x0,				y0
+			VFMULS32		y1,		x1,				y1
+			VFMULS32		y2,		x2,				y2
+			
+			VFADDS32		y0,		x0,				y0
+			VFADDS32		y1,		x1,				y1
+			VFADDS32		y2,		x2,				y2						; y=y*a+a
+
+[sign0]		VBEX			a3,		y0,				y0	
+[sign1]		VBEX			a3,		y1,				y1
+[sign2]		VBEX			a3,		y2,				y2
+
+			VSTDW			y1:y0,	*y++[offset]
+			VSTW			y2,		*y++[offset]
+			SSUBU			48,	len,	len
+[len]		SBR				.sinsp_loop
+
+.endloop
+
+.size sinsp, -.sinsp			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			

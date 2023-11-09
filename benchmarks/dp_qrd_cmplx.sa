@@ -1,0 +1,1056 @@
+.global DSPF_dp_qrd_cmplx
+
+.input Nrows, Ncols, input_R1:input_R0, input_Q1:input_Q0, input_u1:input_u0, input_t1:input_t0, input_buffer1:input_buffer0
+
+.gen_var col, i, loop_count, len, increment, flag0, flag1
+.gen_var tmp1:tmp0, tmp3:tmp2, tmp5:tmp4, tmp7:tmp6, tmp9:tmp8, tmp
+.gen_var alphah:alphal, neg_alphah:neg_alphal, urealh:ureall
+.gen_var zimagh:zimagl, zrealh:zreall,scale_imagh:scale_imagl, scale_realh:scale_reall
+.gen_var sum_imagh:sum_imagl, sum_realh:sum_reall
+
+.gen_var tmp1_realh_v:tmp1_reall_v, tmp1_imagh_v:tmp1_imagl_v
+.gen_var dst1_realh_v:dst1_reall_v, dst1_imagh_v:dst1_imagl_v
+.gen_var rrh_v:rrl_v, iih_v:iil_v, rih_v:ril_v, irh_v:irl_v
+.gen_var sum1_realh_v:sum1_reall_v, sum1_imagh_v:sum2_imagl_v
+.gen_var saved0h:saved0l,saved1h:saved1l,zeroh:zerol
+.gen_var temp_realh_v:temp_reall_v,temp_imagh_v:temp_imagl_v
+
+.add_var R_am, Q_am, u_am, t_am, save_add, base1, base2
+.add_var off_16, off_32, offset_v1, offset_v2
+.add_var buffer, tmp_add, CIPR_add, ESR_add, DMA_add
+.add_var offset_s1, offset_s2
+
+;接收地址
+SMVAGA36 input_R1:input_R0, R_am
+SMVAGA36 input_Q1:input_Q0, Q_am
+SMVAGA36 input_u1:input_u0, u_am
+SMVAGA36 input_t1:input_t0, t_am
+SMVAGA36 input_buffer1:input_buffer0, buffer
+
+;确定u_am和Q_am的类型
+VLDW *+u_am[0],temp_reall_v
+VLDW *+Q_am[0],temp_realh_v
+
+;初始化increment
+SADD -1,Ncols,increment
+SSHFLL 4,increment,increment
+;初始化loop_count
+SLT Ncols,Nrows,flag0
+[flag0] SSUBU 1,Ncols,loop_count
+[!flag0] SSUBU 2,Nrows,loop_count
+;配置偏移量
+SMOVIL 0,tmp1
+
+SMOVIL 16,tmp0
+SMVAGA36 tmp1:tmp0,off_16
+
+SMOVIL 32,tmp0
+SMVAGA36 tmp1:tmp0,off_32	
+;初始化zero
+VMOVIL 0,zerol
+VMOVIL 0,zeroh
+;初始化配置地址
+SMOVIL 0,tmp1
+
+SMOVIL 0x401BFFD0,tmp0
+SMOVIH 0x401BFFD0,tmp0
+SMVAGA36 tmp1:tmp0,CIPR_add
+
+SMOVIL 0x401BFFF8,tmp0
+SMOVIH 0x401BFFF8,tmp0
+SMVAGA36 tmp1:tmp0,ESR_add
+
+SMOVIL 0x401A0000,tmp0
+SMOVIH 0x401A0000,tmp0
+SMVAGA36 tmp1:tmp0,DMA_add
+
+SMOVIL 0,col
+;for循环，以col为索引
+.col_loop: .loop
+	;col(R41) <= loop_count(R34)
+	SLT loop_count,col,flag0
+	[flag0] SBR .col_end
+
+	SMOVIL 0xFFFF,tmp
+	SSTW tmp,*+CIPR_add[0]
+	;DMA传输
+	;FIXME:假设DDR中的数据高四位为8
+	SMOVIL 0X08005002,tmp2	;从AM传输到DDR中，08=源地址的高四位 + 目的地址的高四位
+    SMOVIH 0X08005002,tmp2
+	SSTW tmp2,*+DMA_add[0]
+
+	SMOVIL 0x0001,tmp2	;数据单元粒度，置一为字
+	SSTW tmp2,*+DMA_add[1]
+
+    ;R[col + col * Ncols]
+	SMULIU col,Ncols,tmp3
+	SADDU tmp3,col,tmp3
+	SSHFLL 4,tmp3,tmp3
+	SMVAAGL R_am,tmp2
+	SADDU tmp3,tmp2,tmp2
+	SSTW tmp2,*+DMA_add[2]	;源地址，AM地址
+
+	SSUBU col,Nrows,tmp3
+	SSUBU 1,tmp3,tmp3
+	SSHFLL 16,tmp3,tmp3
+
+	SMOVIL 0x0004,tmp2
+	SOR tmp3,tmp2,tmp2
+	SSTW tmp2,*+DMA_add[3]	;源计数
+
+	SSHFLL 4,col,tmp0
+	SMVAAGL buffer,tmp2
+	SADDU tmp0,tmp2,tmp2
+	SSTW tmp2,*+DMA_add[4]	;目的地址
+
+	SMOVIL 0x0004,tmp2
+	SOR tmp3,tmp2,tmp2
+	SSTW tmp2,*+DMA_add[5]	;目的计数
+
+	SSTW increment,*+DMA_add[6]	;帧索引
+
+	SMOVIL 0,tmp2
+	SSTW tmp2,*+DMA_add[7]	;块索引
+
+	;往 ESR 的相应位写 1，启动 DMA
+	SMOVIL 1,tmp2
+	SSTW tmp2,*+ESR_add[0]
+
+	;读取CIPR寄存器,检测CIPR相应位
+	.CIPR_test:
+	SLDW *+CIPR_add[0],tmp2
+	SAND 0x1,tmp2,flag0
+	[!flag0] SBR .CIPR_test
+
+	;求平方和
+	SSUBU col,Nrows,len	;len
+
+	SMOVIL 0,tmp1
+	SSHFLL 4,col,tmp0
+	SADDA tmp1:tmp0,buffer,tmp_add
+	SMOVIL 0,sum_reall
+	SMOVIL 0,sum_realh
+
+	.sum_loop:	.loop
+		SLT 0,len,flag0
+		[!flag0] SBR .sum_end
+
+		SLDDW *tmp_add++[1],tmp1:tmp0	;实
+		SLDDW *tmp_add++[1],tmp3:tmp2	;虚
+
+		SFMULD tmp1:tmp0,tmp1:tmp0,tmp5:tmp4
+		SFMULD tmp3:tmp2,tmp3:tmp2,tmp7:tmp6
+
+		SFADDD tmp5:tmp4,tmp7:tmp6,tmp9:tmp8
+
+		SFADDD tmp9:tmp8,sum_realh:sum_reall,sum_realh:sum_reall
+
+		SSUB 1,len,len
+		SBR .sum_loop
+	.endloop
+	.sum_end:
+
+	SMOVIL 0,tmp0
+	SMOVIL 0,tmp1
+	;FIXME:
+	SFCMPED tmp1:tmp0,sum_realh:sum_reall,flag0
+
+	[flag0] SBR .end1
+		SMOVIL 0,tmp0
+
+		SMOVIL 0x3FE00000,tmp1	;0.5
+    	SMOVIH 0x3FE00000,tmp1
+
+		SMOVIL 0,tmp2
+
+		SMOVIL 0x3FF80000,tmp3	;1.5
+    	SMOVIH 0x3FF80000,tmp3
+
+		SFRSQD sum_realh:sum_reall,tmp5:tmp4	;x[n]
+		;第一次迭代
+		SFMULD tmp5:tmp4,tmp5:tmp4,tmp7:tmp6	;x[n]*x[n]
+		SFMULD tmp1:tmp0,sum_realh:sum_reall,tmp9:tmp8	;a / 2
+		SFMULD tmp9:tmp8,tmp7:tmp6,tmp7:tmp6	;a/2 * x[n]*x[n]
+		SFSUBD tmp7:tmp6,tmp3:tmp2,tmp7:tmp6	;3/2 - (a/2 * x[n]*x[n])
+		SFMULD tmp7:tmp6,tmp5:tmp4,tmp5:tmp4	;(3/2 - (a/2 * x[n]*x[n])) * x[n]
+		;第二次迭代
+		SFMULD tmp5:tmp4,tmp5:tmp4,tmp7:tmp6	;x[n]*x[n]
+		SFMULD tmp1:tmp0,sum_realh:sum_reall,tmp9:tmp8	;a / 2
+		SFMULD tmp9:tmp8,tmp7:tmp6,tmp7:tmp6	;a/2 * x[n]*x[n]
+		SFSUBD tmp7:tmp6,tmp3:tmp2,tmp7:tmp6	;3/2 - (a/2 * x[n]*x[n])
+		SFMULD tmp7:tmp6,tmp5:tmp4,tmp5:tmp4	;(3/2 - (a/2 * x[n]*x[n])) * x[n]
+
+		SFMULD tmp5:tmp4,sum_realh:sum_reall,alphah:alphal	;1/sqrt(a) * a = sqrt(a)
+
+
+		;alpha=-sqrt(sum_real);
+		SMOVIL 31,tmp0
+		SBEX tmp0,alphah,alphah
+
+		SMOVIL 0,tmp5
+		SSHFLL 1,col,tmp4
+		SMVAGA36 tmp5:tmp4,offset_s1	
+		SLDDW *+buffer[offset_s1],tmp3:tmp2	;buffer[2*col]
+
+		SMOVIL 0,tmp4
+		SMOVIL 0,tmp5		
+
+		SMOVIL 31,tmp0
+		SFCMPLD tmp3:tmp2,tmp5:tmp4,flag0
+
+		[!flag0] SBEX tmp0,alphah,alphah
+
+		SFADDD tmp3:tmp2,alphah:alphal,urealh:ureall
+		
+		SBEX tmp0,alphah,neg_alphah
+		SMOV alphal,neg_alphal
+
+		;将R[col + col * Ncols] + alpha存到buffer中,此时buffer的值等于u
+
+		SSTDW urealh:ureall,*+buffer[offset_s1]
+
+        ;改变R和u
+        ;通过DMA改变u
+        ;通过SVR改变R  
+		SMOVIL 0xFFFF,tmp
+		SSTW tmp,*+CIPR_add[0]
+		;FIXME:假设DDR中的数据高四位为8
+		SMOVIL 0X80005002,tmp2	;从DDR传输到AM中，80=源地址的高四位 + 目的地址的高四位
+		SMOVIH 0X80005002,tmp2
+		SSTW tmp2,*+DMA_add[0]
+
+		SMOVIL 0x0001,tmp2	;数据单元粒度，置一为字
+		SSTW tmp2,*+DMA_add[1]
+
+		;buffer[col]
+		SSHFLL 4,col,tmp0
+		;FIXME:
+		SMVAAGL buffer,tmp2
+		SADDU tmp0,tmp2,tmp2
+		SSTW tmp2,*+DMA_add[2]	;源地址，DDR地址
+
+		SSUBU col,Nrows,tmp3
+		SSUBU 1,tmp3,tmp3
+		SSHFLL 16,tmp3,tmp3
+
+		SMOVIL 0x0004,tmp2
+		SOR tmp3,tmp2,tmp2
+		SSTW tmp2,*+DMA_add[3]	;源计数
+
+		SMVAAGL u_am,tmp2
+		SSTW tmp2,*+DMA_add[4]	;目的地址
+
+		SMOVIL 0x0004,tmp2
+		SOR tmp3,tmp2,tmp2
+		SSTW tmp2,*+DMA_add[5]	;目的计数
+
+		SMOVIL 0,tmp2
+		SSTW tmp2,*+DMA_add[6]	;帧索引
+
+		SSTW tmp2,*+DMA_add[7]	;块索引
+
+		;往 ESR 的相应位写 1，启动 DMA
+
+		SMOVIL 1,tmp2
+		SSTW tmp2,*+ESR_add[0]
+
+		;读取CIPR寄存器,检测CIPR相应位
+		.CIPR_test1:
+		SLDW *+CIPR_add[0],tmp2
+		SAND 0x1,tmp2,flag0
+		[!flag0] SBR .CIPR_test1
+
+		;把-alpha存入R[col][col]
+		SMULIU col,Ncols,tmp0
+		SADD col,tmp0,tmp0
+		SSHFLL 1,tmp0,tmp0
+
+		SMOVIL 0,tmp1
+		SMVAGA36 tmp1:tmp0,offset_v1
+		VLDDW *+R_am[offset_v1],tmp1_realh_v:tmp1_reall_v
+		VMVCGC tmp1_reall_v,SVR
+
+		SMVCGC neg_alphal,SVR0
+		SMVCGC neg_alphah,SVR1
+
+		SMOVIL 0,tmp0
+		SMVCGC tmp0,SVR2
+		SMVCGC tmp0,SVR3
+
+		VMVCCG SVR,tmp1_reall_v
+
+		VSTDW tmp1_realh_v:tmp1_reall_v,*+R_am[offset_v1]
+
+		;将R的下半置零
+		;进行一行向量的置零操作
+		SMOV col,len	;len
+
+		SMULIU col,Ncols,tmp0
+		SADD tmp0,col,tmp2
+
+		SSHFLL 4,tmp0,tmp0
+		SMOVIL 0,tmp1
+		SADDA tmp1:tmp0,R_am,base1	;地址
+
+		SMOVIL 0,tmp3
+		SMOVIL 0,tmp5
+
+		SSHFLL 1,tmp2,tmp2
+		SMVAGA36 tmp3:tmp2,offset_v1
+		SADDU 16,tmp2,tmp4
+		SMVAGA36 tmp5:tmp4,offset_v2
+
+		VLDDW *+R_am[offset_v1],saved0h:saved0l
+		VLDDW *+R_am[offset_v2],saved1h:saved1l
+
+		.k11_loop: .loop 
+			SLT 0,len,flag0
+			[!flag0] SBR .k11_end
+			
+			VSTDW zeroh:zerol,*base1++[off_16]
+			VSTDW zeroh:zerol,*base1++[off_16]
+			
+			SSUB 16,len,len
+			SBR .k11_loop
+		.endloop
+		.k11_end:
+
+		VSTDW saved0h:saved0l,*+R_am[offset_v1]
+		VSTDW saved1h:saved1l,*+R_am[offset_v2]		
+
+		SMOVIL 0,tmp2
+		SMOVIL 0,tmp3
+		;zreal=alpha*u[2*col  ];
+      	;zimag=alpha*u[2*col+1];
+		SSHFLL 1,col,tmp4
+		SADD 1,tmp4,tmp4
+		SMOVIL 0,tmp5
+		SMVAGA36 tmp5:tmp4,offset_s1	
+		SLDDW *+buffer[offset_s1],tmp5:tmp4	;buffer[2*col]
+
+		SFMULD alphah:alphal,urealh:ureall,zrealh:zreall
+		SFMULD alphah:alphal,tmp5:tmp4,zimagh:zimagl
+
+		SFCMPED zrealh:zreall,tmp3:tmp2,flag0
+		SFCMPED zimagh:zimagl,tmp3:tmp2,flag1
+
+		SNOT flag0,flag0
+		SNOT flag1,flag1
+
+		SOR flag0,flag1,flag0
+		;if ((zreal!=0)||(zimag!=0))
+		[!flag0] SBR .end2
+            ;scale_real = zreal / (zreal^2 + zimag^2);
+            ;scale_imag = - zimag / (zreal^2 + zimag^2);
+			SFMULD zrealh:zreall,zrealh:zreall,tmp3:tmp2
+			SFMULD zimagh:zimagl,zimagh:zimagl,tmp5:tmp4
+			SFADDD tmp5:tmp4,tmp3:tmp2,tmp3:tmp2
+
+			SFRCPD tmp3:tmp2,tmp5:tmp4
+
+			SMOVIL 0,tmp0
+			SMOVIL 0x40000000,tmp1	;2
+            SMOVIH 0x40000000,tmp1
+			;x[n+1] = ( 2 - v*x[n] ) * x[n]
+			;tmp3:tmp2 <-> v, tmp1:tmp0 <-> 2, tmp5:tmp4 <-> x[n]
+			;迭代第一次
+			SFMULD tmp3:tmp2,tmp5:tmp4,tmp7:tmp6 	;v*x[n]
+			SFSUBD tmp7:tmp6,tmp1:tmp0,tmp7:tmp6	;2 - v*x[n]
+			SFMULD tmp7:tmp6,tmp5:tmp4,tmp5:tmp4	;( 2 - v*x[n] ) * x[n]
+			;迭代第二次
+			SFMULD tmp3:tmp2,tmp5:tmp4,tmp7:tmp6 	;v*x[n]
+			SFSUBD tmp7:tmp6,tmp1:tmp0,tmp7:tmp6	;2 - v*x[n]
+			SFMULD tmp7:tmp6,tmp5:tmp4,tmp5:tmp4	;( 2 - v*x[n] ) * x[n]
+
+			SFMULD tmp5:tmp4,zrealh:zreall,scale_realh:scale_reall
+			SFMULD tmp5:tmp4,zimagh:zimagl,scale_imagh:scale_imagl
+
+			SMOVIL 31,tmp0
+			SBEX tmp0,scale_imagh,scale_imagh
+
+			;进行一行向量的置零操作
+			;t_am
+			SSUBU col,Ncols,len	;len
+			SSUBU 1,len,len
+
+			SMVAAA t_am,base1	;地址
+
+			SMOVIL 0,tmp5
+			SMOVIL 0,tmp3
+
+			SSHFLL 1,Ncols,tmp4
+			SMVAGA36 tmp5:tmp4,offset_v1	;保存	
+			SADDU 16,tmp4,tmp2
+			SMVAGA36 tmp3:tmp2,offset_v2
+
+			VLDDW *+t_am[offset_v1],saved0h:saved0l
+			VLDDW *+t_am[offset_v2],saved1h:saved1l
+
+			.k_loop: .loop 
+				SLT 0,len,flag0
+				[!flag0] SBR .k_end
+				
+				VSTDW zeroh:zerol,*base1++[off_16]
+				VSTDW zeroh:zerol,*base1++[off_16]
+				
+				SSUB 16,len,len
+				SBR .k_loop
+			.endloop
+			.k_end:
+
+			VSTDW saved0h:saved0l,*+t_am[offset_v1]
+			VSTDW saved1h:saved1l,*+t_am[offset_v2]
+
+
+			;求每列的u_transpose * c
+			SMOV col,i
+			.i_loop: .loop
+				SLT i,Nrows,flag0
+				[!flag0] SBR .i_end
+
+				;保存
+				SSHFLL 4,Ncols,tmp0
+				SMOVIL 0,tmp1
+
+				SADDA tmp1:tmp0,t_am,save_add
+				VLDDW *save_add++[off_16],saved0h:saved0l
+				VLDDW *save_add++[off_16],saved1h:saved1l
+
+				;广播
+				SMOVIL 0,tmp5
+				SSHFLL 1,i,tmp4
+				SMVAGA36 tmp5:tmp4,offset_s1
+				SADDU 1,tmp4,tmp6
+
+				SMOVIL 0,tmp7
+				SMVAGA36 tmp7:tmp6,offset_s2
+
+				SLDDW *+buffer[offset_s1],tmp1:tmp0	;real
+				SLDDW *+buffer[offset_s2],tmp3:tmp2	;imag
+
+				SMOVIL 31,tmp4
+				SBEX tmp4,tmp3,tmp3
+
+				SVBCAST2 tmp1:tmp0,temp_realh_v:temp_reall_v
+				SVBCAST2 tmp3:tmp2,temp_imagh_v:temp_imagl_v
+
+
+				SSUBU col,Ncols,len	;len
+				SSUBU 1,len,len
+
+				;(float*)R+col+1+i*Ncols+k*VPE_NUM
+				SADD 1,col,tmp0
+				SMULIU i,Ncols,tmp1
+				SADD tmp0,tmp1,tmp0
+				SSHFLL 4,tmp0,tmp0
+				SMOVIL 0,tmp1
+				SADDA tmp1:tmp0,R_am,base1
+
+				;(float*)t+k*VPE_NUM
+				SMVAAA t_am,base2
+
+				SMOVIL 0x0100,tmp4	;256 = 16 * 2 * 8
+				SMOVIL 0,tmp5
+
+				.k2_loop: .loop base2
+					SLT 0,len,flag0
+					[!flag0] SBR .k2_end
+					
+					
+					VLDDW1M4 *+base1[off_16],tmp1_imagh_v:tmp1_imagl_v
+					|VLDDW0M4  *+base1[0],tmp1_realh_v:tmp1_reall_v
+
+					
+					VLDDW1M4 *+base2[off_16],dst1_imagh_v:dst1_imagl_v
+					|VLDDW0M4  *+base2[0],dst1_realh_v:dst1_reall_v
+
+					;rrh_v:rrl_v, iih_v:iil_v, rih_v:ril_v, irh_v:irl_v
+					VFMULD temp_realh_v:temp_reall_v,tmp1_realh_v:tmp1_reall_v,rrh_v:rrl_v	;rr
+					VFMULD temp_imagh_v:temp_imagl_v,tmp1_imagh_v:tmp1_imagl_v,iih_v:iil_v	;ii
+					VFMULD temp_realh_v:temp_reall_v,tmp1_imagh_v:tmp1_imagl_v,rih_v:ril_v	;ri
+					VFMULD temp_imagh_v:temp_imagl_v,tmp1_realh_v:tmp1_reall_v,irh_v:irl_v	;ir
+
+					;
+					VFSUBD iih_v:iil_v,rrh_v:rrl_v,tmp1_realh_v:tmp1_reall_v
+					VFADDD rih_v:ril_v,irh_v:irl_v,tmp1_imagh_v:tmp1_imagl_v
+
+
+					VFADDD tmp1_realh_v:tmp1_reall_v,dst1_realh_v:dst1_reall_v,dst1_realh_v:dst1_reall_v
+					VFADDD tmp1_imagh_v:tmp1_imagl_v,dst1_imagh_v:dst1_imagl_v,dst1_imagh_v:dst1_imagl_v
+				
+
+					VSTDW0M16  dst1_realh_v:dst1_reall_v,*+base2[0]
+					|VSTDW1M16 dst1_imagh_v:dst1_imagl_v,*+base2[off_16]
+
+					SADDA tmp5:tmp4,base1,base1
+					SADDA tmp5:tmp4,base2,base2					
+					
+					SSUB 16,len,len
+					SBR .k2_loop
+				.endloop
+				.k2_end:
+
+				;恢复
+				VSTDW saved0h:saved0l,*-save_add[off_32]
+				VSTDW saved1h:saved1l,*-save_add[off_16]
+
+				SADD 1,i,i				
+				SBR .i_loop
+			.endloop
+			.i_end:
+
+			;求每列的u_transpose * c * scale
+			;保存
+			SSHFLL 4,Ncols,tmp0
+			SMOVIL 0,tmp1
+			SADDA tmp1:tmp0,t_am,save_add
+			
+			VLDDW *save_add++[off_16],saved0h:saved0l
+			VLDDW *save_add++[off_16],saved1h:saved1l			
+
+			;广播
+			SVBCAST2 scale_realh:scale_reall,temp_realh_v:temp_reall_v
+			SVBCAST2 scale_imagh:scale_imagl,temp_imagh_v:temp_imagl_v
+
+			SSUBU col,Ncols,len	;len
+			SSUBU 1,len,len
+
+			;(float*)t+k*VPE_NUM
+			SMVAAA t_am,base2
+
+			SMOVIL 0x0100,tmp4	;256 = 16 * 2 * 8
+			SMOVIL 0,tmp5			
+
+			.k3_loop: .loop 
+				SLT 0,len,flag0
+				[!flag0] SBR .k3_end
+				
+				
+				VLDDW1M4 *+base2[off_16],tmp1_imagh_v:tmp1_imagl_v
+				|VLDDW0M4  *+base2[0],tmp1_realh_v:tmp1_reall_v
+
+
+				;rrh_v:rrl_v, iih_v:iil_v, rih_v:ril_v, irh_v:irl_v
+				VFMULD temp_realh_v:temp_reall_v,tmp1_realh_v:tmp1_reall_v,rrh_v:rrl_v	;rr
+				VFMULD temp_imagh_v:temp_imagl_v,tmp1_imagh_v:tmp1_imagl_v,iih_v:iil_v	;ii
+				VFMULD temp_realh_v:temp_reall_v,tmp1_imagh_v:tmp1_imagl_v,rih_v:ril_v	;ri
+				VFMULD temp_imagh_v:temp_imagl_v,tmp1_realh_v:tmp1_reall_v,irh_v:irl_v	;ir
+
+				;
+				VFSUBD iih_v:iil_v,rrh_v:rrl_v,dst1_realh_v:dst1_reall_v
+				VFADDD rih_v:ril_v,irh_v:irl_v,dst1_imagh_v:dst1_imagl_v
+
+				VSTDW0M16  dst1_realh_v:dst1_reall_v,*+base2[0]
+				|VSTDW1M16 dst1_imagh_v:dst1_imagl_v,*+base2[off_16]
+				
+				SADDA tmp5:tmp4,base2,base2
+
+				SSUB 16,len,len
+				SBR .k3_loop
+			.endloop
+			.k3_end:
+
+			VSTDW saved0h:saved0l,*-save_add[off_32]
+			VSTDW saved1h:saved1l,*-save_add[off_16]
+
+			;改变R
+			SMOV col,i
+			.i1_loop: .loop
+				SLT i,Nrows,flag0
+				[!flag0] SBR .i1_end
+
+				;保存
+				;(float*)R+(i+1)*Ncols 
+				SADD 1,i,tmp0
+				SMULIU Ncols,tmp0,tmp0
+				SSHFLL 4,tmp0,tmp0
+				SMOVIL 0,tmp1
+
+				SADDA tmp1:tmp0,R_am,save_add
+				VLDDW *save_add++[off_16],saved0h:saved0l
+				VLDDW *save_add++[off_16],saved1h:saved1l
+
+				;广播
+				SMOVIL 0,tmp5
+				SMOVIL 0,tmp3
+
+				SSHFLL 1,i,tmp4
+				SMVAGA36 tmp5:tmp4,offset_s1
+				SADDU 1,tmp4,tmp2
+				SMVAGA36 tmp3:tmp2,offset_s2				
+				SLDDW *+buffer[offset_s1],tmp1:tmp0	;real
+				SLDDW *+buffer[offset_s2],tmp3:tmp2	;imag
+
+				SVBCAST2 tmp1:tmp0,temp_realh_v:temp_reall_v
+				SVBCAST2 tmp3:tmp2,temp_imagh_v:temp_imagl_v
+
+				SSUBU col,Ncols,len	;len
+				SSUBU 1,len,len
+
+				;(float*)R+col+1+i*Ncols+k*VPE_NUM
+				SADD 1,col,tmp0
+				SMULIU i,Ncols,tmp1
+				SADD tmp0,tmp1,tmp0
+				SSHFLL 4,tmp0,tmp0
+				SMOVIL 0,tmp1
+				SADDA tmp1:tmp0,R_am,base2
+
+				;(float*)t+k*VPE_NUM
+				SMVAAA t_am,base1
+
+				SMOVIL 0x0100,tmp4	;256 = 16 * 2 * 8
+				SMOVIL 0,tmp5					
+
+				.k4_loop: .loop 
+					SLT 0,len,flag0
+					[!flag0] SBR .k4_end
+
+					
+					VLDDW1M4 *+base1[off_16],tmp1_imagh_v:tmp1_imagl_v
+					|VLDDW0M4  *+base1[0],tmp1_realh_v:tmp1_reall_v
+
+					
+					VLDDW1M4 *+base2[off_16],dst1_imagh_v:dst1_imagl_v
+					|VLDDW0M4  *+base2[0],dst1_realh_v:dst1_reall_v
+
+					;rrh_v:rrl_v, iih_v:iil_v, rih_v:ril_v, irh_v:irl_v
+					VFMULD temp_realh_v:temp_reall_v,tmp1_realh_v:tmp1_reall_v,rrh_v:rrl_v	;rr
+					VFMULD temp_imagh_v:temp_imagl_v,tmp1_imagh_v:tmp1_imagl_v,iih_v:iil_v	;ii
+					VFMULD temp_realh_v:temp_reall_v,tmp1_imagh_v:tmp1_imagl_v,rih_v:ril_v	;ri
+					VFMULD temp_imagh_v:temp_imagl_v,tmp1_realh_v:tmp1_reall_v,irh_v:irl_v	;ir
+
+					;
+					VFSUBD iih_v:iil_v,rrh_v:rrl_v,tmp1_realh_v:tmp1_reall_v
+					VFADDD rih_v:ril_v,irh_v:irl_v,tmp1_imagh_v:tmp1_imagl_v
+
+
+					VFSUBD tmp1_realh_v:tmp1_reall_v,dst1_realh_v:dst1_reall_v,dst1_realh_v:dst1_reall_v
+					VFSUBD tmp1_imagh_v:tmp1_imagl_v,dst1_imagh_v:dst1_imagl_v,dst1_imagh_v:dst1_imagl_v
+				
+
+					VSTDW0M16  dst1_realh_v:dst1_reall_v,*+base2[0]
+					|VSTDW1M16 dst1_imagh_v:dst1_imagl_v,*+base2[off_16]
+
+					SADDA tmp5:tmp4,base1,base1
+					SADDA tmp5:tmp4,base2,base2	
+					
+					SSUB 16,len,len
+					SBR .k4_loop
+				.endloop
+				.k4_end:
+
+				;恢复
+				VSTDW saved0h:saved0l,*-save_add[off_32]
+				VSTDW saved1h:saved1l,*-save_add[off_16]
+
+				SADD 1,i,i
+				SBR .i1_loop
+			.endloop
+			.i1_end:
+
+			;改变Q
+			SMOVIL 0,i
+			.i2_loop: .loop
+				SLT i,Nrows,flag0
+				[!flag0] SBR .i2_end
+
+				VMOVIL 0,sum1_realh_v
+				VMOVIL 0,sum1_reall_v
+
+				VMOVIL 0,sum1_imagh_v
+				VMOVIL 0,sum2_imagl_v
+
+				SSUBU col,Nrows,len	;len
+
+				;(float*)Q+i*Nrows+col+k*VPE_NUM
+				SMULIU i,Nrows,tmp0
+				SADD col,tmp0,tmp0
+				SSHFLL 4,tmp0,tmp0
+				SMOVIL 0,tmp1
+				SADDA tmp1:tmp0,Q_am,base1
+
+				;(float*)u+k*VPE_NUM
+				SMVAAA u_am,base2
+
+				SMOVIL 0x0100,tmp4	;256 = 16 * 2 * 8
+				SMOVIL 0,tmp5							
+
+				.k21_loop: .loop 
+					SLT 0,len,flag0
+					[!flag0] SBR .k21_end
+					
+					
+					VLDDW1M4 *+base1[off_16],tmp1_imagh_v:tmp1_imagl_v
+					|VLDDW0M4  *+base1[0],tmp1_realh_v:tmp1_reall_v
+
+					
+					VLDDW1M4 *+base2[off_16],temp_imagh_v:temp_imagl_v
+					|VLDDW0M4  *+base2[0],temp_realh_v:temp_reall_v
+
+					VMOVIL 31,dst1_reall_v
+					VBEX dst1_reall_v,temp_imagh_v,temp_imagh_v	
+
+					;rrh_v:rrl_v, iih_v:iil_v, rih_v:ril_v, irh_v:irl_v
+					VFMULD temp_realh_v:temp_reall_v,tmp1_realh_v:tmp1_reall_v,rrh_v:rrl_v	;rr
+					VFMULD temp_imagh_v:temp_imagl_v,tmp1_imagh_v:tmp1_imagl_v,iih_v:iil_v	;ii
+					VFMULD temp_realh_v:temp_reall_v,tmp1_imagh_v:tmp1_imagl_v,rih_v:ril_v	;ri
+					VFMULD temp_imagh_v:temp_imagl_v,tmp1_realh_v:tmp1_reall_v,irh_v:irl_v	;ir
+
+					;
+					VFSUBD iih_v:iil_v,rrh_v:rrl_v,tmp1_realh_v:tmp1_reall_v
+					VFADDD rih_v:ril_v,irh_v:irl_v,tmp1_imagh_v:tmp1_imagl_v	
+
+					SMOVIL 16,tmp0
+					SMOVIL 0x0000ffff,tmp1
+					SMOVIH 0x0000ffff,tmp1					
+
+					SLT len,tmp0,flag0
+					[flag0]SSUB len,tmp0,tmp0
+					[flag0]SSHFLR tmp0,tmp1,tmp2							
+
+					[flag0]SMVCGC tmp2,VLR
+					.t3:					
+
+					VFADDD tmp1_realh_v:tmp1_reall_v,sum1_realh_v:sum1_reall_v,sum1_realh_v:sum1_reall_v
+					VFADDD tmp1_imagh_v:tmp1_imagl_v,sum1_imagh_v:sum2_imagl_v,sum1_imagh_v:sum2_imagl_v
+
+					.t4:
+					[flag0]SMVCGC tmp1,VLR					
+
+					SADDA tmp5:tmp4,base1,base1
+					SADDA tmp5:tmp4,base2,base2						
+					
+					SSUB 16,len,len
+					SBR .k21_loop
+				.endloop
+				.k21_end:
+
+				VSTDW0M16  sum1_realh_v:sum1_reall_v,*+t_am[0]
+				|VSTDW1M16 sum1_imagh_v:sum2_imagl_v,*+t_am[off_16]
+
+				.t1:
+
+				SMOVIL 0xFFFF,tmp
+				SSTW tmp,*+CIPR_add[0]
+
+				SMOVIL 0X08005002,tmp2	;从DDR传输到AM中，80=源地址的高四位 + 目的地址的高四位
+				SMOVIH 0X08005002,tmp2
+				SSTW tmp2,*+DMA_add[0]
+
+				SMOVIL 0x0001,tmp2	;数据单元粒度，置一为字
+				SSTW tmp2,*+DMA_add[1]
+
+				;t_am
+				SMVAAGL t_am,tmp2
+				SSTW tmp2,*+DMA_add[2]	;源地址，DDR地址
+
+				SMOVIL 15,tmp3
+				SSHFLL 16,tmp3,tmp3
+
+				SMOVIL 0x0004,tmp2
+				SOR tmp3,tmp2,tmp2
+				SSTW tmp2,*+DMA_add[3]	;源计数
+
+				;buffer
+				SMVAAGL buffer,tmp2
+				SSTW tmp2,*+DMA_add[4]	;目的地址
+
+				SMOVIL 0x0004,tmp2
+				SOR tmp3,tmp2,tmp2
+				SSTW tmp2,*+DMA_add[5]	;目的计数
+
+				SMOVIL 0,tmp2
+				SSTW tmp2,*+DMA_add[6]	;帧索引
+
+				SSTW tmp2,*+DMA_add[7]	;块索引
+
+				;往 ESR 的相应位写 1，启动 DMA
+
+				SMOVIL 1,tmp2
+				SSTW tmp2,*+ESR_add[0]
+
+				;读取CIPR寄存器,检测CIPR相应位
+				.CIPR_test2:
+				SLDW *+CIPR_add[0],tmp2
+				SAND 0x1,tmp2,flag0
+				[!flag0] SBR .CIPR_test2
+
+				;sum_imagh:sum_imagl, sum_realh:sum_reall
+				SMOVIL 0,sum_reall
+				SMOVIL 0,sum_realh
+				SMOVIL 0,sum_imagl
+				SMOVIL 0,sum_imagh
+
+				SMVAAA buffer,tmp_add
+
+				SMOVIL 0,tmp8	;index
+				SMOVIL 16,tmp9
+
+				.sum_loop1:	.loop
+					SLT tmp8,tmp9,flag0
+					[!flag0] SBR .sum_end1
+
+					SLDDW *tmp_add++[1],tmp1:tmp0	;实
+					SLDDW *tmp_add++[1],tmp3:tmp2	;虚
+
+					SFADDD tmp1:tmp0,sum_realh:sum_reall,sum_realh:sum_reall
+					SFADDD tmp3:tmp2,sum_imagh:sum_imagl,sum_imagh:sum_imagl
+
+					SADD 1,tmp8,tmp8
+					SBR .sum_loop1
+				.endloop
+				.sum_end1:				
+
+				;zimagh:zimagl, zrealh:zreall,scale_imagh:scale_imagl, scale_realh:scale_reall
+				SFMULD sum_realh:sum_reall,scale_realh:scale_reall,tmp1:tmp0	;rr
+				SFMULD sum_imagh:sum_imagl,scale_imagh:scale_imagl,tmp3:tmp2	;ii
+				SFMULD sum_realh:sum_reall,scale_imagh:scale_imagl,tmp5:tmp4	;ri
+				SFMULD sum_imagh:sum_imagl,scale_realh:scale_reall,tmp7:tmp6	;ir
+
+				SFSUBD tmp3:tmp2,tmp1:tmp0,zrealh:zreall
+				SFADDD tmp5:tmp4,tmp7:tmp6,zimagh:zimagl
+
+				;保存
+				;(float*)Q+(i+1)*Nrows
+				SADD 1,i,tmp0
+				SMULIU Nrows,tmp0,tmp0
+				SSHFLL 4,tmp0,tmp0
+				SMOVIL 0,tmp1
+
+				SADDA tmp1:tmp0,Q_am,save_add
+				VLDDW *save_add++[off_16],saved0h:saved0l
+				VLDDW *save_add++[off_16],saved1h:saved1l
+
+				;广播
+				;temp_realh_v:temp_reall_v,temp_imagh_v:temp_imagl_v
+				SVBCAST2 zrealh:zreall,temp_realh_v:temp_reall_v
+				SVBCAST2 zimagh:zimagl,temp_imagh_v:temp_imagl_v
+
+				SSUBU col,Nrows,len	;len
+
+				;(float*)Q+i*Nrows+col+k*VPE_NUM
+				SMULIU i,Nrows,tmp0
+				SADD col,tmp0,tmp0
+				SSHFLL 4,tmp0,tmp0
+				SMOVIL 0,tmp1
+				SADDA tmp1:tmp0,Q_am,base2
+
+				;(float*)u+k*VPE_NUM
+				SMVAAA u_am,base1
+
+				SMOVIL 0x0100,tmp4	;256 = 16 * 2 * 8
+				SMOVIL 0,tmp5				
+
+				.k22_loop: .loop 
+					SLT 0,len,flag0
+					[!flag0] SBR .k22_end
+					
+					
+					VLDDW1M4 *+base1[off_16],tmp1_imagh_v:tmp1_imagl_v
+					|VLDDW0M4  *+base1[0],tmp1_realh_v:tmp1_reall_v
+
+					
+					VLDDW1M4 *+base2[off_16],dst1_imagh_v:dst1_imagl_v
+					|VLDDW0M4  *+base2[0],dst1_realh_v:dst1_reall_v
+
+					;rrh_v:rrl_v, iih_v:iil_v, rih_v:ril_v, irh_v:irl_v
+					VFMULD temp_realh_v:temp_reall_v,tmp1_realh_v:tmp1_reall_v,rrh_v:rrl_v	;rr
+					VFMULD temp_imagh_v:temp_imagl_v,tmp1_imagh_v:tmp1_imagl_v,iih_v:iil_v	;ii
+					VFMULD temp_realh_v:temp_reall_v,tmp1_imagh_v:tmp1_imagl_v,rih_v:ril_v	;ri
+					VFMULD temp_imagh_v:temp_imagl_v,tmp1_realh_v:tmp1_reall_v,irh_v:irl_v	;ir
+
+					;
+					VFSUBD iih_v:iil_v,rrh_v:rrl_v,tmp1_realh_v:tmp1_reall_v
+					VFADDD rih_v:ril_v,irh_v:irl_v,tmp1_imagh_v:tmp1_imagl_v
+
+
+					VFSUBD tmp1_realh_v:tmp1_reall_v,dst1_realh_v:dst1_reall_v,dst1_realh_v:dst1_reall_v
+					VFSUBD tmp1_imagh_v:tmp1_imagl_v,dst1_imagh_v:dst1_imagl_v,dst1_imagh_v:dst1_imagl_v
+				
+
+					VSTDW0M16  dst1_realh_v:dst1_reall_v,*+base2[0]
+					|VSTDW1M16 dst1_imagh_v:dst1_imagl_v,*+base2[off_16]
+
+					SADDA tmp5:tmp4,base1,base1
+					SADDA tmp5:tmp4,base2,base2	
+					
+					SSUB 16,len,len
+
+					SBR .k22_loop
+				.endloop
+				.k22_end:
+
+				;恢复
+				VSTDW saved0h:saved0l,*-save_add[off_32]
+				VSTDW saved1h:saved1l,*-save_add[off_16]			
+
+				SADD 1,i,i
+				SBR .i2_loop
+			.endloop			
+			.i2_end:
+			
+		.end2:
+	.end1:
+	SADD 1,col,col
+	SBR	.col_loop
+.endloop
+.col_end:
+
+SSUB 1,Ncols,tmp0
+SEQ tmp0,loop_count,flag0
+[!flag0] SBR .l1
+
+	SMOV col,i
+	.i3_loop: .loop
+		SLT i,Nrows,flag0
+		[!flag0] SBR .i3_end
+
+		;保存
+		;(float*)R+(i+1)*Ncols
+		SADD 1,i,tmp0
+		SMULIU Ncols,tmp0,tmp0
+		SSHFLL 4,tmp0,tmp0
+		SMOVIL 0,tmp1
+
+		SADDA tmp1:tmp0,t_am,save_add
+		VLDDW *save_add++[off_16],saved0h:saved0l
+		VLDDW *save_add++[off_16],saved1h:saved1l
+
+		SMOV Ncols,len	;len
+
+		;(float*)R+i*Ncols+k*VPE_NUM
+		SMULIU i,Ncols,tmp0
+		SSHFLL 4,tmp0,tmp0
+		SMOVIL 0,tmp1
+
+		SADDA tmp1:tmp0,R_am,base2
+
+		.k24_loop: .loop 
+			SLT 0,len,flag0
+			[!flag0] SBR .k24_end
+
+			VSTDW zeroh:zerol,*base2++[off_16]
+			VSTDW zeroh:zerol,*base2++[off_16]
+			
+			SSUB 16,len,len
+			SBR .k24_loop
+		.endloop
+		.k24_end:
+
+		;恢复
+		VSTDW saved0h:saved0l,*-save_add[off_32]
+		VSTDW saved1h:saved1l,*-save_add[off_16]
+
+		SADD 1,i,i				
+		SBR .i3_loop
+	.endloop
+	.i3_end:
+	SBR .l2
+.l1:
+	;进行一行向量的置零操作
+	SMOV col,len	;len
+
+	;(float*)R+col*Ncols
+	SMULIU col,Ncols,tmp0
+	SADD tmp0,col,tmp2
+
+	SSHFLL 4,tmp0,tmp0
+	SMOVIL 0,tmp1
+	SADDA tmp1:tmp0,R_am,base1	;地址
+
+	;(float*)R+col*Ncols+col
+	SMOVIL 0,tmp3
+	SMOVIL 0,tmp5
+
+	SSHFLL 1,tmp2,tmp2
+	SMVAGA36 tmp3:tmp2,offset_v1
+	SADDU 16,tmp2,tmp4
+	SMVAGA36 tmp5:tmp4,offset_v2	
+	VLDDW *+R_am[offset_v1],saved0h:saved0l
+	VLDDW *+R_am[offset_v2],saved1h:saved1l
+
+	.k23_loop: .loop 
+		SLT 0,len,flag0
+		[!flag0] SBR .k23_end
+		
+		VSTDW zeroh:zerol,*base1++[off_16]
+		VSTDW zeroh:zerol,*base1++[off_16]
+		
+		SSUB 16,len,len
+		SBR .k23_loop
+	.endloop
+	.k23_end:
+
+	VSTDW saved0h:saved0l,*+R_am[offset_v1]
+	VSTDW saved1h:saved1l,*+R_am[offset_v2]
+
+.l2:
+
+SMOVIL 0,i
+;循环主体
+.i4_loop: .loop
+;循环判断
+;if(i<Nrows)
+    SLT i,Nrows,flag0
+    [!flag0] SBR .i4_end
+;SBR跳转
+
+    ;Q的地址
+    ;(float*)Q+i*Nrows
+    SMOVIL 0,tmp1
+	SMOVIL 0,tmp3
+	
+    SADD 1,i,tmp0      ;i+1
+    SMULIU tmp0,Nrows,tmp0   ;(i+1)*Nrows
+    SSHFLL 4,tmp0,tmp0	;(i+1)*Nrows*16
+
+    SADDA tmp1:tmp0,Q_am,save_add
+
+    SMULIU i,Nrows,tmp2   ;i*Nrows
+    SSHFLL 4,tmp2,tmp2    ; i*Nrows*16
+    
+    SADDA tmp3:tmp2,Q_am,base2
+
+    VMOVIL 31,temp_reall_v
+    ;for循环，k为索引
+    ;初始化len
+    ;Nrows
+    SMOV Nrows,len
+	VLDDW *save_add++[off_16],saved0h:saved0l
+	VLDDW *save_add++[off_16],saved1h:saved1l
+
+	SMOVIL 0x0100,tmp4	;256 = 16 * 2 * 8
+	SMOVIL 0,tmp5	
+    ;循环主体
+    .k20_loop: .loop
+        ;循环判断
+        SLT 0,len,flag0
+        [!flag0] SBR .k20_end
+
+		
+		VLDDW1M4 *+base2[off_16],dst1_imagh_v:dst1_imagl_v
+		|VLDDW0M4  *+base2[0],dst1_realh_v:dst1_reall_v
+
+        VBEX temp_reall_v,dst1_imagh_v,dst1_imagh_v
+        
+        ;存回Q
+        ;(float*)Q+i*Nrows+col+k*VPE_NUM
+		VSTDW0M16  dst1_realh_v:dst1_reall_v,*+base2[0]
+		|VSTDW1M16 dst1_imagh_v:dst1_imagl_v,*+base2[off_16]
+
+		SADDA tmp5:tmp4,base2,base2
+        ;更改len
+        SSUB 16,len,len
+        SBR .k20_loop
+    .k20_end:
+	.endloop          
+
+	VSTDW saved0h:saved0l,*-save_add[off_32]
+	VSTDW saved1h:saved1l,*-save_add[off_16]
+
+    SADD 1,i,i
+    SBR .i4_loop
+.endloop
+.i4_end:
+ 
+.size DSPF_dp_qrd_cmplx, -.DSPF_dp_qrd_cmplx

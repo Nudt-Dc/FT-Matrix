@@ -1,0 +1,538 @@
+.global DSPF_dp_cholesky_solver_cmplx
+
+.input order, v_L_h:v_L_l, v_y_h:v_y_l, v_b_h:v_b_l, v_x_h:v_x_l, buf_h:buf_l
+.gen_var r_order
+.gen_var i, j, sum_r_h:sum_r_l, sum_i_h:sum_i_l, tempf_h:tempf_l, temp_b_r_h:temp_b_r_l, temp_b_i_h:temp_b_i_l, temp_L_r_h:temp_L_r_l, temp_L_i_h:temp_L_i_l, ans_y_r_h:ans_y_r_l, ans_y_i_h:ans_y_i_l 
+.gen_var zero_h:zero_l, is_stop, is_continue, temp_off, tempd, temp_buf_r_h:temp_buf_r_l, temp_buf_i_h:temp_buf_i_l, ans_x_r_h:ans_x_r_l, ans_x_i_h:ans_x_i_l
+.gen_var tempv_r_h:tempv_r_l, tempv_i_h:tempv_i_l, tempv_r_r_h:tempv_r_r_l, tempv_r_i_h:tempv_r_i_l, tempv_i_r_h:tempv_i_r_l, tempv_i_i_h:tempv_i_i_l
+.gen_var zero_v_h:zero_v_l, v_y_r_temp_h:v_y_r_temp_l, v_y_i_temp_h:v_y_i_temp_l, v_L_r_temp_h:v_L_r_temp_l, v_L_i_temp_h:v_L_i_temp_l, v_x_r_temp_h:v_x_r_temp_l, v_x_i_temp_h:v_x_i_temp_l, buf_r_temp_h:buf_r_temp_l, buf_i_temp_h:buf_i_temp_l, v_b_r_temp_h:v_b_r_temp_l, v_b_i_temp_h:v_b_i_temp_l
+.gen_var arg_h:arg_l, div_temp_1_h:div_temp_1_l, div_temp_2_h:div_temp_2_l, div_temp_3_h:div_temp_3_l, div_temp_4_h:div_temp_4_l, div_temp_5_h:div_temp_5_l
+.gen_var div_temp_6_h:div_temp_6_l, div_temp_7_h:div_temp_7_l, div_temp_8_h:div_temp_8_l, div_temp_9_h:div_temp_9_l, div_temp_10_h:div_temp_10_l
+.gen_var off_var, div_sum_1_h:div_sum_1_l, div_sum_2_h:div_sum_2_l, div_sum_3_h:div_sum_3_l
+.gen_var temp_r_r_h:temp_r_r_l, temp_r_i_h:temp_r_i_l, temp_i_r_h:temp_i_r_l, temp_i_i_h:temp_i_i_l, temp_r_squ_h:temp_r_squ_l, temp_i_squ_h:temp_i_squ_l
+.gen_var tempv_x_r_h:tempv_x_r_l, tempv_x_i_h:tempv_x_i_l
+.add_var r_v_L, r_v_y, r_v_b, r_v_x, r_buf
+.add_var off_1, off_2, off_3, off_4
+
+SMOV order, r_order
+SMVAGA36 v_L_h:v_L_l, r_v_L
+SMVAGA36 v_y_h:v_y_l, r_v_y
+SMVAGA36 v_b_h:v_b_l, r_v_b
+SMVAGA36 v_x_h:v_x_l, r_v_x
+SMVAGA36 buf_h:buf_l, r_buf
+
+; solve L * y = b
+
+; zero_v = vec_svbcast2(0.0)
+SMOVIL 0x0000, zero_h
+SMOVIH 0x0000, zero_h
+SMOV zero_h, zero_l
+SVBCAST2 zero_h:zero_l, zero_v_h:zero_v_l
+
+; zero_v->v_y
+SMOVIL 0x0000, i
+SMOVIH 0x0000, i
+
+.i_loop1: .loop
+    SLT i, r_order, is_continue
+    [!is_continue] SBR .i_loop1_end
+
+    SMOV i, off_var
+    SADD i, off_var, off_var
+    SMVAGA32 off_var, off_1
+    VSTDWM16 zero_v_h:zero_v_l, *+r_v_y[off_1]
+
+    SADD 16, off_var, off_var
+    SMVAGA32 off_var, off_3
+    VSTDWM16 zero_v_h:zero_v_l, *+r_v_y[off_3]
+
+    SADD 16, i, i
+
+    SBR .i_loop1
+.i_loop1_end: 
+.endloop
+
+; main part
+SMOVIL 0x0000, i
+SMOVIH 0x0000, i
+
+.i_loop2: .loop
+    SLT i, r_order, is_continue
+    [!is_continue] SBR .i_loop2_end
+
+    VMOV zero_v_h, tempv_r_r_h
+    VMOV zero_v_l, tempv_r_r_l
+
+    VMOV zero_v_h, tempv_r_i_h
+    VMOV zero_v_l, tempv_r_i_l
+
+    VMOV zero_v_h, tempv_i_r_h
+    VMOV zero_v_l, tempv_i_r_l
+
+    VMOV zero_v_h, tempv_i_i_h
+    VMOV zero_v_l, tempv_i_i_l
+
+    SMOVIL 0x0000, sum_r_l
+    SMOVIH 0x0000, sum_r_l
+    SMOV sum_r_l, sum_r_h
+    SMOV sum_r_l, sum_i_l
+    SMOV sum_r_l, sum_i_h
+
+    SMOVIL 0x0000, j
+    SMOVIH 0x0000, j
+
+    .j_loop1: .loop
+        SLT j, r_order, is_continue
+        [!is_continue] SBR .j_loop1_end
+
+        SLT j, i, is_continue
+        [!is_continue] SBR .j_loop1_end
+
+        SMOV j, off_var
+        SADD j, off_var, off_var
+        SMVAGA32 off_var, off_1
+
+        SADD 16, off_var, off_var
+        SMVAGA32 off_var, off_3
+
+        VLDDW0M4 *+r_v_y[off_1], v_y_r_temp_h:v_y_r_temp_l
+        VLDDW1M4 *+r_v_y[off_3], v_y_i_temp_h:v_y_i_temp_l
+
+        SMOV r_order, temp_off
+        SADD r_order, temp_off, temp_off
+        SMULIU i, temp_off, temp_off
+        SMOV j, off_var
+        SADD j, off_var, off_var
+        SADD temp_off, off_var, off_var
+        SMVAGA32 off_var, off_2
+
+        SADD 16, off_var, off_var
+        SMVAGA32 off_var, off_4
+
+        VLDDW0M4 *+r_v_L[off_2], v_L_r_temp_h:v_L_r_temp_l
+        VLDDW1M4 *+r_v_L[off_4], v_L_i_temp_h:v_L_i_temp_l
+
+        VFMULAD v_y_r_temp_h:v_y_r_temp_l, v_L_r_temp_h:v_L_r_temp_l, tempv_r_r_h:tempv_r_r_l, tempv_r_r_h:tempv_r_r_l
+        VFMULAD v_y_r_temp_h:v_y_r_temp_l, v_L_i_temp_h:v_L_i_temp_l, tempv_r_i_h:tempv_r_i_l, tempv_r_i_h:tempv_r_i_l
+        VFMULAD v_y_i_temp_h:v_y_i_temp_l, v_L_r_temp_h:v_L_r_temp_l, tempv_i_r_h:tempv_i_r_l, tempv_i_r_h:tempv_i_r_l
+        VFMULAD v_y_i_temp_h:v_y_i_temp_l, v_L_i_temp_h:v_L_i_temp_l, tempv_i_i_h:tempv_i_i_l, tempv_i_i_h:tempv_i_i_l
+
+        SADD 16, j, j
+
+        SBR .j_loop1
+    .j_loop1_end: 
+    .endloop
+
+    VFSUBD tempv_i_i_h:tempv_i_i_l, tempv_r_r_h:tempv_r_r_l, tempv_r_h:tempv_r_l
+    VFADDD tempv_r_i_h:tempv_r_i_l, tempv_i_r_h:tempv_i_r_l, tempv_i_h:tempv_i_l
+
+    VSTDWM16 tempv_r_h:tempv_r_l, *+r_buf[0]
+    VLDDW *+r_buf[0], tempv_r_h:tempv_r_l
+
+    VSTDWM16 tempv_i_h:tempv_i_l, *+r_buf[0]
+    VLDDW *+r_buf[0], tempv_i_h:tempv_i_l
+    
+    VMVCGC tempv_r_l, SVR
+
+    SMVCCG SVR1, tempf_h
+    SMVCCG SVR0, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR3, tempf_h
+    SMVCCG SVR2, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR5, tempf_h
+    SMVCCG SVR4, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR7, tempf_h
+    SMVCCG SVR6, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR9, tempf_h
+    SMVCCG SVR8, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR11, tempf_h
+    SMVCCG SVR10, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR13, tempf_h
+    SMVCCG SVR12, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR15, tempf_h
+    SMVCCG SVR14, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    .gap1:
+    VMVCGC tempv_r_h, SVR
+
+    SMVCCG SVR1, tempf_h
+    SMVCCG SVR0, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR3, tempf_h
+    SMVCCG SVR2, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR5, tempf_h
+    SMVCCG SVR4, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR7, tempf_h
+    SMVCCG SVR6, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR9, tempf_h
+    SMVCCG SVR8, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR11, tempf_h
+    SMVCCG SVR10, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR13, tempf_h
+    SMVCCG SVR12, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    SMVCCG SVR15, tempf_h
+    SMVCCG SVR14, tempf_l
+    SFADDD tempf_h:tempf_l, sum_r_h:sum_r_l, sum_r_h:sum_r_l
+
+    .gap2:
+    VMVCGC tempv_i_l, SVR
+
+    SMVCCG SVR1, tempf_h
+    SMVCCG SVR0, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR3, tempf_h
+    SMVCCG SVR2, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR5, tempf_h
+    SMVCCG SVR4, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR7, tempf_h
+    SMVCCG SVR6, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR9, tempf_h
+    SMVCCG SVR8, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR11, tempf_h
+    SMVCCG SVR10, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR13, tempf_h
+    SMVCCG SVR12, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR15, tempf_h
+    SMVCCG SVR14, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    .gap3:
+    VMVCGC tempv_i_h, SVR
+
+    SMVCCG SVR1, tempf_h
+    SMVCCG SVR0, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR3, tempf_h
+    SMVCCG SVR2, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR5, tempf_h
+    SMVCCG SVR4, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR7, tempf_h
+    SMVCCG SVR6, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR9, tempf_h
+    SMVCCG SVR8, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR11, tempf_h
+    SMVCCG SVR10, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR13, tempf_h
+    SMVCCG SVR12, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+
+    SMVCCG SVR15, tempf_h
+    SMVCCG SVR14, tempf_l
+    SFADDD tempf_h:tempf_l, sum_i_h:sum_i_l, sum_i_h:sum_i_l
+    
+    
+    SMOV i, off_var
+    SADD i, off_var, off_var
+    SMVAGA32 off_var, off_1
+
+    SMOV r_order, temp_off
+    SADD r_order, temp_off, temp_off
+    SMULIU i, temp_off, temp_off
+    SMOV i, off_var
+    SADD i, off_var, off_var
+    SADD temp_off, off_var, off_var
+    SMVAGA32 off_var, off_2
+
+    VLDDW *+r_v_L[off_2], v_L_r_temp_h:v_L_r_temp_l
+
+    .gap4:
+    VMVCGC v_L_r_temp_l, SVR
+    SMVCCG SVR1, temp_L_r_h
+    SMVCCG SVR0, temp_L_r_l
+    SMVCCG SVR3, temp_L_i_h
+    SMVCCG SVR2, temp_L_i_l
+
+    VLDDW *+r_v_b[off_1], v_b_r_temp_h:v_b_r_temp_l
+
+    .gap5:
+    VMVCGC v_b_r_temp_l, SVR
+    SMVCCG SVR1, temp_b_r_h
+    SMVCCG SVR0, temp_b_r_l
+    SMVCCG SVR3, temp_b_i_h
+    SMVCCG SVR2, temp_b_i_l
+
+    ; ans_y = (temp_b - sum) / temp_L
+    SFSUBD sum_r_h:sum_r_l, temp_b_r_h:temp_b_r_l, temp_b_r_h:temp_b_r_l
+    SFSUBD sum_i_h:sum_i_l, temp_b_i_h:temp_b_i_l, temp_b_i_h:temp_b_i_l
+
+    SFMULD temp_b_r_h:temp_b_r_l, temp_L_r_h:temp_L_r_l, temp_r_r_h:temp_r_r_l
+    SFMULD temp_b_r_h:temp_b_r_l, temp_L_i_h:temp_L_i_l, temp_r_i_h:temp_r_i_l
+    SFMULD temp_b_i_h:temp_b_i_l, temp_L_r_h:temp_L_r_l, temp_i_r_h:temp_i_r_l
+    SFMULD temp_b_i_h:temp_b_i_l, temp_L_i_h:temp_L_i_l, temp_i_i_h:temp_i_i_l
+
+    SFMULD temp_L_r_h:temp_L_r_l, temp_L_r_h:temp_L_r_l, temp_r_squ_h:temp_r_squ_l
+    SFMULD temp_L_i_h:temp_L_i_l, temp_L_i_h:temp_L_i_l, temp_i_squ_h:temp_i_squ_l
+
+    SFADDD temp_r_r_h:temp_r_r_l, temp_i_i_h:temp_i_i_l, div_sum_1_h:div_sum_1_l
+    SFSUBD temp_r_i_h:temp_r_i_l, temp_i_r_h:temp_i_r_l, div_sum_2_h:div_sum_2_l
+    SFADDD temp_r_squ_h:temp_r_squ_l, temp_i_squ_h:temp_i_squ_l, div_sum_3_h:div_sum_3_l
+
+    SMOV zero_h, arg_l
+    SMOVIL 0x00000000, arg_h
+    SMOVIH 0x40000000, arg_h
+
+    ; real part
+    SFRCPD div_sum_3_h:div_sum_3_l, div_temp_1_h:div_temp_1_l
+
+    SFMULD div_sum_3_h:div_sum_3_l, div_temp_1_h:div_temp_1_l, div_temp_2_h:div_temp_2_l
+    SFSUBD div_temp_2_h:div_temp_2_l, arg_h:arg_l, div_temp_3_h:div_temp_3_l
+    SFMULD div_temp_3_h:div_temp_3_l, div_temp_1_h:div_temp_1_l, div_temp_4_h:div_temp_4_l
+    
+    SFMULD div_sum_3_h:div_sum_3_l, div_temp_4_h:div_temp_4_l, div_temp_5_h:div_temp_5_l
+    SFSUBD div_temp_5_h:div_temp_5_l, arg_h:arg_l, div_temp_6_h:div_temp_6_l
+    SFMULD div_temp_6_h:div_temp_6_l, div_temp_4_h:div_temp_4_l, div_temp_7_h:div_temp_7_l
+    
+    SFMULD div_sum_3_h:div_sum_3_l, div_temp_7_h:div_temp_7_l, div_temp_8_h:div_temp_8_l
+    SFSUBD div_temp_8_h:div_temp_8_l, arg_h:arg_l, div_temp_9_h:div_temp_9_l
+    SFMULD div_temp_9_h:div_temp_9_l, div_temp_7_h:div_temp_7_l, div_temp_10_h:div_temp_10_l
+
+    SFMULD div_sum_1_h:div_sum_1_l, div_temp_10_h:div_temp_10_l, ans_y_r_h:ans_y_r_l
+
+    ; imaginary part
+    SFMULD div_sum_2_h:div_sum_2_l, div_temp_10_h:div_temp_10_l, ans_y_i_h:ans_y_i_l
+    
+    VLDDW *+r_v_y[off_1], v_y_r_temp_h:v_y_r_temp_l
+
+    .gap6:
+    VMVCGC v_y_r_temp_l, SVR
+    SMVCGC ans_y_r_h, SVR1
+    SMVCGC ans_y_r_l, SVR0
+    SMVCGC ans_y_i_h, SVR3
+    SMVCGC ans_y_i_l, SVR2
+    VMVCCG SVR, v_y_r_temp_l
+
+    VSTDW v_y_r_temp_h:v_y_r_temp_l, *+r_v_y[off_1]
+
+    SADD 1, i, i
+    SBR .i_loop2
+.i_loop2_end: 
+.endloop
+
+; solve L_transpose * x = y
+
+; v_y->buf
+SMOVIL 0x0000, i
+SMOVIH 0x0000, i
+.i_loop3: .loop
+    SLT i, r_order, is_continue
+    [!is_continue] SBR .i_loop3_end
+
+    SMOV i, off_var
+    SADD i, off_var, off_var
+    SMVAGA32 off_var, off_1
+    VLDDW *+r_v_y[off_1], v_y_r_temp_h:v_y_r_temp_l
+    VSTDW v_y_r_temp_h:v_y_r_temp_l, *+r_buf[off_1]
+
+    SADD 16, off_var, off_var
+    SMVAGA32 off_var, off_3
+    VLDDW *+r_v_y[off_3], v_y_r_temp_h:v_y_r_temp_l
+    VSTDW v_y_r_temp_h:v_y_r_temp_l, *+r_buf[off_3]
+
+    SADD 16, i, i
+    SBR .i_loop3
+.i_loop3_end: 
+.endloop
+
+; main part
+SSUB 1, r_order, tempd
+SMOV tempd, i
+.i_loop4: .loop
+    SLT i, zero_h, is_stop
+    [is_stop] SBR .i_loop4_end
+
+    SMOV i, off_var
+    SADD i, off_var, off_var
+    SMVAGA32 off_var, off_1
+
+    SMOV r_order, temp_off
+    SADD r_order, temp_off, temp_off
+    SMULIU i, temp_off, temp_off
+    SMOV i, off_var
+    SADD i, off_var, off_var
+    SADD temp_off, off_var, off_var
+    SMVAGA32 off_var, off_2
+
+    VLDDW *+r_v_L[off_2], v_L_r_temp_h:v_L_r_temp_l
+
+    VMVCGC v_L_r_temp_l, SVR
+    SMVCCG SVR1, temp_L_r_h
+    SMVCCG SVR0, temp_L_r_l
+    SMVCCG SVR3, temp_L_i_h
+    SMVCCG SVR2, temp_L_i_l
+    SFSUBD temp_L_i_h:temp_L_i_l, zero_h:zero_l, temp_L_i_h:temp_L_i_l
+
+    VLDDW *+r_buf[off_1], buf_r_temp_h:buf_r_temp_l
+
+    .gap7:
+    VMVCGC buf_r_temp_l, SVR
+    SMVCCG SVR1, temp_buf_r_h
+    SMVCCG SVR0, temp_buf_r_l
+    SMVCCG SVR3, temp_buf_i_h
+    SMVCCG SVR2, temp_buf_i_l
+
+    ; ans_x = temp_buf / temp_L
+    SFMULD temp_buf_r_h:temp_buf_r_l, temp_L_r_h:temp_L_r_l, temp_r_r_h:temp_r_r_l
+    SFMULD temp_buf_r_h:temp_buf_r_l, temp_L_i_h:temp_L_i_l, temp_r_i_h:temp_r_i_l
+    SFMULD temp_buf_i_h:temp_buf_i_l, temp_L_r_h:temp_L_r_l, temp_i_r_h:temp_i_r_l
+    SFMULD temp_buf_i_h:temp_buf_i_l, temp_L_i_h:temp_L_i_l, temp_i_i_h:temp_i_i_l
+
+    SFMULD temp_L_r_h:temp_L_r_l, temp_L_r_h:temp_L_r_l, temp_r_squ_h:temp_r_squ_l
+    SFMULD temp_L_i_h:temp_L_i_l, temp_L_i_h:temp_L_i_l, temp_i_squ_h:temp_i_squ_l
+
+    SFADDD temp_r_r_h:temp_r_r_l, temp_i_i_h:temp_i_i_l, div_sum_1_h:div_sum_1_l
+    SFSUBD temp_r_i_h:temp_r_i_l, temp_i_r_h:temp_i_r_l, div_sum_2_h:div_sum_2_l
+    SFADDD temp_r_squ_h:temp_r_squ_l, temp_i_squ_h:temp_i_squ_l, div_sum_3_h:div_sum_3_l
+
+    SMOV zero_h, arg_l
+    SMOVIL 0x00000000, arg_h
+    SMOVIH 0x40000000, arg_h
+
+    ; real part
+    SFRCPD div_sum_3_h:div_sum_3_l, div_temp_1_h:div_temp_1_l
+
+    SFMULD div_sum_3_h:div_sum_3_l, div_temp_1_h:div_temp_1_l, div_temp_2_h:div_temp_2_l
+    SFSUBD div_temp_2_h:div_temp_2_l, arg_h:arg_l, div_temp_3_h:div_temp_3_l
+    SFMULD div_temp_3_h:div_temp_3_l, div_temp_1_h:div_temp_1_l, div_temp_4_h:div_temp_4_l
+
+    SFMULD div_sum_3_h:div_sum_3_l, div_temp_4_h:div_temp_4_l, div_temp_5_h:div_temp_5_l
+    SFSUBD div_temp_5_h:div_temp_5_l, arg_h:arg_l, div_temp_6_h:div_temp_6_l
+    SFMULD div_temp_6_h:div_temp_6_l, div_temp_4_h:div_temp_4_l, div_temp_7_h:div_temp_7_l
+
+    SFMULD div_sum_3_h:div_sum_3_l, div_temp_7_h:div_temp_7_l, div_temp_8_h:div_temp_8_l
+    SFSUBD div_temp_8_h:div_temp_8_l, arg_h:arg_l, div_temp_9_h:div_temp_9_l
+    SFMULD div_temp_9_h:div_temp_9_l, div_temp_7_h:div_temp_7_l, div_temp_10_h:div_temp_10_l
+
+    SFMULD div_sum_1_h:div_sum_1_l, div_temp_10_h:div_temp_10_l, ans_x_r_h:ans_x_r_l
+
+    ; imaginary part
+    SFMULD div_sum_2_h:div_sum_2_l, div_temp_10_h:div_temp_10_l, ans_x_i_h:ans_x_i_l
+
+    VLDDW *+r_v_x[off_1], v_x_r_temp_h:v_x_r_temp_l
+
+    .gap8:
+    VMVCGC v_x_r_temp_l, SVR
+    SMVCGC ans_x_r_h, SVR1
+    SMVCGC ans_x_r_l, SVR0
+    SMVCGC ans_x_i_h, SVR3
+    SMVCGC ans_x_i_l, SVR2
+    VMVCCG SVR, v_x_r_temp_l
+
+    VSTDW v_x_r_temp_h:v_x_r_temp_l, *+r_v_x[off_1]
+
+    SFSUBD ans_x_r_h:ans_x_r_l, zero_h:zero_l, ans_x_r_h:ans_x_r_l
+    SFSUBD ans_x_i_h:ans_x_i_l, zero_h:zero_l, ans_x_i_h:ans_x_i_l
+
+    SVBCAST2 ans_x_r_h:ans_x_r_l, tempv_x_r_h:tempv_x_r_l
+    SVBCAST2 ans_x_i_h:ans_x_i_l, tempv_x_i_h:tempv_x_i_l
+
+    SMOVIL 0x0000, j
+    SMOVIH 0x0000, j
+
+    .j_loop2: .loop
+        SLT j, r_order, is_continue
+        [!is_continue] SBR .j_loop2_end
+
+        SLT j, i, is_continue
+        [!is_continue] SBR .j_loop2_end
+
+        SMOV r_order, temp_off
+        SADD r_order, temp_off, temp_off
+        SMULIU i, temp_off, temp_off
+        SMOV j, off_var
+        SADD j, off_var, off_var
+        SADD temp_off, off_var, off_var
+        SMVAGA32 off_var, off_2
+
+        SADD 16, off_var, off_var
+        SMVAGA32 off_var, off_4
+
+        VLDDW0M4 *+r_v_L[off_2], v_L_r_temp_h:v_L_r_temp_l
+        VLDDW1M4 *+r_v_L[off_4], v_L_i_temp_h:v_L_i_temp_l
+
+        VFMULD tempv_x_r_h:tempv_x_r_l, v_L_r_temp_h:v_L_r_temp_l, tempv_r_r_h:tempv_r_r_l
+        VFMULD tempv_x_r_h:tempv_x_r_l, v_L_i_temp_h:v_L_i_temp_l, tempv_r_i_h:tempv_r_i_l
+        VFMULD tempv_x_i_h:tempv_x_i_l, v_L_r_temp_h:v_L_r_temp_l, tempv_i_r_h:tempv_i_r_l
+        VFMULD tempv_x_i_h:tempv_x_i_l, v_L_i_temp_h:v_L_i_temp_l, tempv_i_i_h:tempv_i_i_l
+
+        VFADDD tempv_i_i_h:tempv_i_i_l, tempv_r_r_h:tempv_r_r_l, tempv_r_h:tempv_r_l
+        VFSUBD tempv_r_i_h:tempv_r_i_l, tempv_i_r_h:tempv_i_r_l, tempv_i_h:tempv_i_l
+
+        SMOV j, off_var
+        SADD j, off_var, off_var
+        SMVAGA32 off_var, off_1
+
+        SADD 16, off_var, off_var
+        SMVAGA32 off_var, off_3
+
+        VLDDW0M4 *+r_buf[off_1], buf_r_temp_h:buf_r_temp_l
+        VLDDW1M4 *+r_buf[off_3], buf_i_temp_h:buf_i_temp_l
+
+        VFADDD tempv_r_h:tempv_r_l, buf_r_temp_h:buf_r_temp_l, buf_r_temp_h:buf_r_temp_l
+        VFADDD tempv_i_h:tempv_i_l, buf_i_temp_h:buf_i_temp_l, buf_i_temp_h:buf_i_temp_l
+
+        VSTDW0M16 buf_r_temp_h:buf_r_temp_l, *+r_buf[off_1]
+        VSTDW1M16 buf_i_temp_h:buf_i_temp_l, *+r_buf[off_3]
+
+        SADD 16, j, j
+
+        SBR .j_loop2
+    .j_loop2_end: 
+    .endloop
+
+    SSUB 1, i, i
+    SBR .i_loop4
+.i_loop4_end: 
+.endloop
+
+.size DSPF_dp_cholesky_solver_cmplx, -.DSPF_dp_cholesky_solver_cmplx

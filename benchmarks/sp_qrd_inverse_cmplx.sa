@@ -1,0 +1,430 @@
+.global DSPF_sp_qrd_inverse_cmplx
+
+.input Input_Nrows, Input_Ncols,Input_Q1:Input_Q0, Input_R1:Input_R0, Input_invA1:Input_invA0, Input_invR1:Input_invR0 
+
+.add_var address_invR, address_R, address_Q, address_invA                 
+.gen_var LS_Rab, LS_Rcd, LS_RCD1, LS_RCD2, LS_RRF, LS_Q, LS_R, LS_A             
+.add_var addr_Rab,addr_Rcd,addr_RCD1,addr_RCD2,addr_RRF,addr_Q,addr_R,addr_A    ;用于访存的基址变量
+.add_var offset_VSize16, offset_SNcols, offset_VNcols, offset_Ncols1, offset16  ;偏移变量 
+.gen_var b:a, d:c, tempA1:tempA0                                                ;标量访存结果
+.gen_var temp1B:temp1A, tempRRFi:tempRRFr, temp2B:temp2A, tempQ1:tempQ0, tempR1:tempR0   ;向量访存结果
+
+;SVR传输 
+.gen_var sum1, sum2, sum3, A1, B1, C1, D1, E1, sum_real, sum_imag
+
+.gen_var factor11:factor10, factor21:factor20, sum_daoshu, h11:h10, h21:h20, h3  ;广播 
+.gen_var dst_real1, dst_real2, dst_real3, dst_imag1, dst_imag2, dst_imag3       ;复数计算结果（VR）
+.gen_var LOOP1, LOOP2, LOOP30, LOOP31, LOOP4, LOOP5, LOOP6                      ;循环变量
+
+.gen_var Number0, Number64, Vector_Size, Vector_Size2, Ncols2, float2        
+.gen_var temp_LS1:temp_LS0, Xn1, sum_square                                     ;用于sadda地址加法
+.gen_var i, judge                                                             ;用于为Vector_Size赋值                                                       
+.gen_var VNumber31
+
+;以下为传入的矩阵地址
+SMVAGA36    Input_R1:Input_R0, address_R
+SMVAGA36    Input_Q1:Input_Q0, address_Q
+SMVAGA36    Input_invA1:Input_invA0, address_invA 
+SMVAGA36    Input_invR1:Input_invR0, address_invR
+
+   ;让线性汇编器把以上几个地址识别为基址变量
+   SLDDW        *+address_R[0], d:c
+   VLDDW        *+address_Q[0], tempQ1:tempQ0
+   SLDDW        *+address_invA[0], tempA1:tempA0  
+   VLDDW        *+address_invR[0], tempRRFi:tempRRFr
+
+;以下为Vector_Size赋值
+SADD        15, Input_Ncols, Vector_Size
+
+SMOVIL      0, i
+SMOVIH      0, i 
+
+    ;以下循环实现 i = Vector_Size / 16
+    .GEMMV_LOOP: .loop
+    SSUB    16, Vector_Size, Vector_Size
+    SADD    1, i, i
+    SLT     15, Vector_Size, judge             
+    [judge]    SBR     .GEMMV_LOOP              
+    .endloop
+
+SMOV    i, Vector_Size  ;Vector_Size = i;
+
+
+;以下为其他通用变量赋值
+SMOVIL      0, Number0
+SMOVIH      0, Number0
+
+SMOVIL      64, Number64
+SMOVIH      0, Number64  
+
+SMOVIL      0, temp_LS1
+SMOVIH      0, temp_LS1
+
+SMOVIL      0x40000000,float2    
+SMOVIH      0x40000000,float2
+
+VMOVIL      31, VNumber31
+VMOVIH      0, VNumber31
+
+SADD        Vector_Size, Vector_Size, Vector_Size2
+SADD        Input_Ncols, Input_Ncols, Ncols2
+
+;以下为offset赋值
+SMULISU     16, Vector_Size, temp_LS0
+SMVAGA36    temp_LS1:temp_LS0, offset_VSize16
+
+SMOVIL      16, temp_LS0
+SMOVIH      0, temp_LS0
+SMVAGA36    temp_LS1:temp_LS0, offset16
+
+SMOV        Input_Ncols, temp_LS0
+SMVAGA36    temp_LS1:temp_LS0, offset_SNcols
+SMVAGA36    temp_LS1:temp_LS0, offset_VNcols
+
+SADD        1, temp_LS0, temp_LS0
+SMVAGA36    temp_LS1:temp_LS0, offset_Ncols1
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;以下是求invR部分
+
+
+
+SSUB        1, Input_Ncols, LOOP1
+
+SMULISU     LOOP1, Ncols2, LS_Rcd
+SADD        LS_Rcd, LOOP1, LS_Rcd
+SADD        LS_Rcd, LOOP1, LS_Rcd
+SMULISU     4, LS_Rcd, LS_Rcd
+SMOV        LS_Rcd, temp_LS0
+SADDA       temp_LS1:temp_LS0, address_R, addr_Rcd
+
+.GEMM1_LOOP: .loop
+
+    SLDDW        *addr_Rcd--[offset_Ncols1], d:c
+
+    SFMULS32  c, c, sum_square
+    SFMULAS32 d, d, sum_square, sum_square
+    SFRCPS32  sum_square, sum_daoshu  ;此处倒数指令精度不够
+
+    ;迭代第一次，得到结果X[n+1]，并将 X[n+1] --> X[n]
+    SFMULS32     sum_square, sum_daoshu, Xn1       
+    SFSUBS32     Xn1, float2, Xn1	  
+    SFMULS32     Xn1, sum_daoshu, sum_daoshu	     
+    ;迭代第二次，得到结果X[n+1]，并将 X[n+1] --> X[n]
+    SFMULS32     sum_square, sum_daoshu, Xn1       
+    SFSUBS32     Xn1, float2, Xn1	  
+    SFMULS32     Xn1, sum_daoshu, sum_daoshu
+
+    SVBCAST  sum_daoshu, h3    ;广播
+
+    SFSUBS32    d, Number0, d  ;对d取负
+
+    SSUB        1, LOOP1, LOOP2
+    SLT         LOOP2, Number0, judge
+    [judge] SBR    .GEMM2_ENDLOOP   ;判断是否能进行首次循环
+
+    SMULISU     LOOP2, Ncols2, LS_Rab
+    SADD        LS_Rab, LOOP1, LS_Rab
+    SADD        LS_Rab, LOOP1, LS_Rab
+    SMULISU     4, LS_Rab, LS_Rab
+    SMOV        LS_Rab, temp_LS0
+    SADDA       temp_LS1:temp_LS0, address_R, addr_Rab
+
+    .GEMM2_LOOP: .loop
+    
+        SLDDW      *addr_Rab--[offset_SNcols], b:a
+
+        ;以下为（a + bi）/(c + di)
+        SFCREAL32  b:a, d:c, factor10
+        SFCIMAG32  b:a, d:c, factor11
+        SFMULS32   factor10, sum_daoshu, factor10
+        SFMULS32   factor11, sum_daoshu, factor11
+
+        SVBCAST2  factor11:factor10, h11:h10  ;广播
+
+        SMOVIL  0, LOOP30
+        SMOVIH  0, LOOP30
+
+        SMULISU     LOOP1, Vector_Size2, LS_RCD1
+        SMULISU     Number64, LS_RCD1, LS_RCD1
+        SMOV        LS_RCD1, temp_LS0
+        SADDA       temp_LS1:temp_LS0, address_invR, addr_RCD1
+
+        SMULISU     LOOP2, Vector_Size2, LS_RRF
+        SMULISU     Number64, LS_RRF, LS_RRF
+        SMOV        LS_RRF, temp_LS0
+        SADDA       temp_LS1:temp_LS0, address_invR, addr_RRF
+        .GEMM30_LOOP: .loop
+        
+            VLDDW   *addr_RCD1++[offset16], temp1B:temp1A
+
+            ;以下为向量复数乘法，结果存放在dst_real1
+            VFCREAL32  h11:h10, temp1B:temp1A, dst_real1
+            VFCIMAG32  h11:h10, temp1B:temp1A, dst_imag1
+
+            ;以下为向量复数减法，包含取数和存回的过程
+            VLDDW       *+addr_RRF[0], tempRRFi:tempRRFr
+            VFSUBS32    dst_real1, tempRRFr, tempRRFr
+            VFSUBS32    dst_imag1, tempRRFi, tempRRFi
+            VSTDW       tempRRFi:tempRRFr, *addr_RRF++[offset16]
+
+        SADD        1, LOOP30, LOOP30   
+        SLT         LOOP30, Vector_Size, judge
+        [judge] SBR    .GEMM30_LOOP  
+        .endloop
+    
+    SSUB        1, LOOP2, LOOP2    
+    SLT         LOOP2, Number0, judge
+    [!judge] SBR    .GEMM2_LOOP  
+    .GEMM2_ENDLOOP: 
+    .endloop
+
+    ;以下为取主对角元元素并广播
+    SMOV        c, factor20
+    SMOV        d, factor21
+    SVBCAST2  factor21:factor20, h21:h20
+
+    SMOVIL  0, LOOP31
+    SMOVIH  0, LOOP31 
+
+    SMULISU     LOOP1, Vector_Size2, LS_RCD2
+    SMULISU     Number64, LS_RCD2, LS_RCD2
+    SMOV        LS_RCD2, temp_LS0
+    SADDA       temp_LS1:temp_LS0, address_invR, addr_RCD2
+    .GEMM31_LOOP: .loop    
+
+        ;以下为向量复数除法:取数
+        VLDDW   *+addr_RCD2[0], temp2B:temp2A
+
+        ;以下为向量复数乘法，结果存放在dst_real2
+        VFCREAL32  h21:h20, temp2B:temp2A, dst_real2
+        VFCIMAG32  h21:h20, temp2B:temp2A, dst_imag2
+
+        ;以下为向量乘法，并将结果存回
+        VFMULS32  dst_real2, h3, temp2A
+        VFMULS32  dst_imag2, h3, temp2B
+        VSTDW     temp2B:temp2A, *addr_RCD2++[offset16]
+    
+    SADD        1, LOOP31, LOOP31   
+    SLT         LOOP31, Vector_Size, judge
+    [judge] SBR    .GEMM31_LOOP  
+    .endloop
+
+SSUB        1, LOOP1, LOOP1    
+SLT         LOOP1, Number0, judge
+[!judge] SBR    .GEMM1_LOOP        
+.endloop                         
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+SMOVIL  0, LOOP4
+SMOVIH  0, LOOP4 
+.GEMM4_LOOP: .loop
+
+    SMOVIL  0, LOOP5
+    SMOVIH  0, LOOP5 
+
+    SMULISU     LOOP4, Number64, LS_Q
+    SMULISU     2, LS_Q, LS_Q
+    SMOV        LS_Q, temp_LS0
+    SADDA       temp_LS1:temp_LS0, address_Q, addr_Q
+    .GEMM5_LOOP: .loop
+    
+        VLDDWM2 *addr_Q++[offset_VNcols], tempQ1:tempQ0
+        
+        ;复数矩阵共轭转置  对虚部tempQ1取反
+        VBEX    VNumber31, tempQ1, tempQ1
+
+        SMOVIL  0, LOOP6
+        SMOVIH  0, LOOP6 
+
+        SMULISU     LOOP4, Number64, LS_R
+        SMULISU     2, LS_R, LS_R
+        SMOV        LS_R, temp_LS0
+        SADDA       temp_LS1:temp_LS0, address_invR, addr_R
+
+        SMULISU     8, LOOP5, LS_A
+        SMOV        LS_A, temp_LS0
+        SADDA       temp_LS1:temp_LS0, address_invA, addr_A
+
+        .GEMM6_LOOP: .loop
+        
+            VLDDW      *addr_R++[offset_VSize16], tempR1:tempR0
+
+            ;以下为向量复数乘法 invR * Q = invA，结果存放在dst_real3
+            VFCREAL32  tempR1:tempR0, tempQ1:tempQ0, dst_real3
+            VFCIMAG32  tempR1:tempR0, tempQ1:tempQ0, dst_imag3
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;实部SVR
+
+            VMVCGC     dst_real3, SVR   ;将dst_real3搬移至SVR
+
+            ;为sum赋初值0
+            SMOV        Number0, sum1
+            SMOV        Number0, sum2
+            SMOV        Number0, sum3
+
+            ;单纯告诉线性汇编器，这里分配五个寄存器
+            SMOVIL      0, A1
+            SMOVIL      1, B1
+            SMOVIL      2, C1
+            SMOVIL      3, D1
+            SMOVIL      4, E1
+
+            ;SVR加法
+            SMVCCG          SVR0, A1
+
+            SMVCCG          SVR1, B1
+
+            SMVCCG          SVR2, C1
+            SFADDS32        sum1, A1, sum1
+
+            SMVCCG          SVR3, D1
+            SFADDS32        sum2, B1, sum2
+
+            SMVCCG          SVR4, E1
+            SFADDS32        sum3, C1, sum3
+
+            SMVCCG          SVR5, A1
+            SFADDS32        sum1, D1, sum1
+
+            SMVCCG          SVR6, B1
+            SFADDS32        sum2, E1, sum2
+
+            SMVCCG          SVR7, C1
+            SFADDS32        sum3, A1, sum3
+
+            SMVCCG          SVR8, D1
+            SFADDS32        sum1, B1, sum1
+
+            SMVCCG          SVR9, E1
+            SFADDS32        sum2, C1, sum2
+
+            SMVCCG          SVR10, A1
+            SFADDS32        sum3, D1, sum3
+
+            SMVCCG          SVR11, B1
+            SFADDS32        sum1, E1, sum1
+
+            SMVCCG          SVR12, C1
+            SFADDS32        sum2, A1, sum2
+
+            SMVCCG          SVR13, D1
+            SFADDS32        sum3, B1, sum3
+
+            SMVCCG          SVR14, E1
+            SFADDS32        sum1, C1, sum1
+
+            SMVCCG          SVR15, A1
+            SFADDS32        sum2, D1, sum2    ;sum2 = SVR.SUM(1,4,7,10,13)
+
+            SFADDS32        sum3, E1, sum3    ;sum3 = SVR.SUM(2,5,8,11,14)
+
+            SFADDS32        sum1, A1, sum1    ;sum1 = SVR.SUM(0,3,6,9,12,15)
+
+            SFADDS32        sum2, sum3, sum2  ;sum2 += sum3
+
+            SFADDS32        sum1, sum2, sum1  ;sum1 +=sum2
+
+            SMOV            sum1, sum_real
+            
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;虚部SVR
+
+            .label1:
+            VMVCGC     dst_imag3, SVR 
+
+            ;为sum赋初值0
+            SMOV        Number0, sum1
+            SMOV        Number0, sum2
+            SMOV        Number0, sum3
+
+            ;单纯告诉线性汇编器，这里分配五个寄存器
+            SMOVIL      5, A1
+            SMOVIL      6, B1
+            SMOVIL      7, C1
+            SMOVIL      8, D1
+            SMOVIL      9, E1
+
+            ;SVR加法
+            SMVCCG          SVR0, A1
+
+            SMVCCG          SVR1, B1
+
+            SMVCCG          SVR2, C1
+            SFADDS32        sum1, A1, sum1
+
+            SMVCCG          SVR3, D1
+            SFADDS32        sum2, B1, sum2
+
+            SMVCCG          SVR4, E1
+            SFADDS32        sum3, C1, sum3
+
+            SMVCCG          SVR5, A1
+            SFADDS32        sum1, D1, sum1
+
+            SMVCCG          SVR6, B1
+            SFADDS32        sum2, E1, sum2
+
+            SMVCCG          SVR7, C1
+            SFADDS32        sum3, A1, sum3
+
+            SMVCCG          SVR8, D1
+            SFADDS32        sum1, B1, sum1
+
+            SMVCCG          SVR9, E1
+            SFADDS32        sum2, C1, sum2
+
+            SMVCCG          SVR10, A1
+            SFADDS32        sum3, D1, sum3
+
+            SMVCCG          SVR11, B1
+            SFADDS32        sum1, E1, sum1
+
+            SMVCCG          SVR12, C1
+            SFADDS32        sum2, A1, sum2
+
+            SMVCCG          SVR13, D1
+            SFADDS32        sum3, B1, sum3
+
+            SMVCCG          SVR14, E1
+            SFADDS32        sum1, C1, sum1
+
+            SMVCCG          SVR15, A1
+            SFADDS32        sum2, D1, sum2    ;sum2 = SVR.SUM(1,4,7,10,13)
+
+            SFADDS32        sum3, E1, sum3    ;sum3 = SVR.SUM(2,5,8,11,14)
+
+            SFADDS32        sum1, A1, sum1    ;sum1 = SVR.SUM(0,3,6,9,12,15)
+
+            SFADDS32        sum2, sum3, sum2  ;sum2 += sum3
+
+            SFADDS32        sum1, sum2, sum1  ;sum1 +=sum2
+
+            SMOV            sum1, sum_imag
+
+            .label2:
+            ;以下是 invA[real,imag] += sum_real, sum_imag
+            SLDDW       *+addr_A[0], tempA1:tempA0          
+            SFADDS32    tempA0, sum_real, tempA0  
+            ;SFADDS32    tempA1, sum_imag, tempA1  
+            SFADDS32    tempA1, sum1, tempA1      
+            SSTDW       tempA1:tempA0, *addr_A++[offset_SNcols]      
+
+        SADD        1, LOOP6, LOOP6   
+        SLT         LOOP6, Input_Nrows, judge
+        [judge] SBR    .GEMM6_LOOP  
+        .endloop
+    
+    SADD        1, LOOP5, LOOP5   
+    SLT         LOOP5, Input_Ncols, judge
+    [judge] SBR    .GEMM5_LOOP  
+    .endloop
+
+
+SADD        1, LOOP4, LOOP4   
+SLT         LOOP4, Vector_Size, judge
+[judge] SBR    .GEMM4_LOOP  
+.endloop
+
+
+.size DSPF_sp_qrd_inverse_cmplx, -.DSPF_sp_qrd_inverse_cmplx
