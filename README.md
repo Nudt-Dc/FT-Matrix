@@ -22,6 +22,9 @@ When the input and output files are default, the default values for input and ou
 
 The program execution process contains multiple outputs, mainly including statistics on the instruction set description file, and information tips for executing each module. If there is a problem with the user's program, it will give feedback and give an error prompt. When the linear assembler is executed successfully, the program outputs "Assembler file is successfully generated." The program will output graph.txt and test_transition.txt an intermediate file, which contains a dependency description file between user instructions and a linear assembly conversion scheduled as an intermediate result of assembly code (before register allocation), which can be used by the user for debugging.
 
+###  Benchmarks
+The benchmarks are stored in the "benchmarks" folder, containing 34 functions. During tests, move the target bench to the same folder of "FT-Matrix.exe" and modify the file name as "test.sa".
+
 #### The Content
 
 |--	The directory of FT-Matrix												
