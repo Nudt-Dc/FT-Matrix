@@ -1,0 +1,24 @@
+.global axpy		; z = a * x + y
+
+.input input_x, input_y, output_z, alpha0, len
+.gen_var x0, y0, z0, tmp, alpha
+.add_var x, y, z
+
+
+	SVBCAST alpha0, alpha
+	SMVAGA input_x, x
+	SMVAGA input_y, y
+	SMVAGA output_z, z
+	SMOVI	3, tmp
+	SMVCGC	tmp, SCR
+
+.axpy_loop: .loop .pipeline .unroll(1)
+	VLDW *y++[16], y0
+	VLDW *x++[16], x0
+	VFMULAD x0, alpha, y0, z0
+	VSTW	z0, *z++[16]
+	SSUBU	16, len, len
+[len] SBR	.axpy_loop
+.endloop
+
+.size axpy, -.axpy

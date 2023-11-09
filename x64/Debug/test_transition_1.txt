@@ -1,0 +1,375 @@
+.global DSP_fir_r4
+.input  input_x1:input_x0,input_h1:input_h0,input_r1:input_r0,nh,nr  ;输入参数
+.gen_var i,j,k,vr_len,loop_i,loop_j,loop_store  ;循环变量与循环条件判断
+.gen_var shuff_add1:shuff_add0,shuff_mid0,shuff_mid1    ;混洗配置参数
+.gen_var shuff_ld_1_16,shuff_ld_3_18        ;混洗后的取数配置
+.gen_var sh0,sh1,sh2,sh3,vh0,vh1,vh2,vh3    ;标量、向量h
+.gen_var x_ld_add1:x_ld_add0,r_ld_add1:r_ld_add0,x_ld_add_compute,x_ld_i
+.gen_var x_0_31,x_0_15,x_1_16,x_2_17,x_3_18,x_0_31_shuff,r_0_15
+.gen_var mula_1  ;乘加中间结果
+.gen_var r_m2ld_1:r_m2ld_0
+.add_var x_ld,h,r_ld,r_store,shuff_add,OR_16
+; cycle(9)
+			SADD.M2	15, nr, vr_len
+|			SMOVIL	0, i
+			SSHFLR	4, vr_len, vr_len
+			SADDU.M2	1, vr_len, vr_len
+|			SMOVIH	0, i
+			SSHFLR	1, vr_len, vr_len
+			SMVCGC	i, SMR
+			VMOVIL	528, shuff_ld_1_16
+			SMVAGA36.M1	input_h1:input_h0, h
+|			VMOVIL	16, shuff_ld_3_18
+			VMOVIH	528, shuff_ld_1_16
+			SADD.M1	0, i, shuff_add1
+|			SADD.M2	0, i, x_ld_add1
+|			VMOVIH	16, shuff_ld_3_18
+; cycle(20)
+			SMOVIL	0, shuff_add0
+			SMOVIH	0x40160000, shuff_add0
+			SMOVIL	0x02020202, shuff_mid0
+			SMVAGA36.M1	shuff_add1:shuff_add0, shuff_add
+|			SMOVIL	0x04020301, shuff_mid1
+			SMOVIH	0x04020301, shuff_mid1
+			SMOVIH	0x02020202, shuff_mid0
+|			SSTW	shuff_mid1, *shuff_add++[1]
+			SADDU.M2	shuff_mid0, shuff_mid1, shuff_mid1
+			SSTW	shuff_mid1, *shuff_add++[1]
+			SADDU.M2	shuff_mid0, shuff_mid1, shuff_mid1
+			SSTW	shuff_mid1, *shuff_add++[1]
+			SADDU.M2	shuff_mid0, shuff_mid1, shuff_mid1
+			SSTW	shuff_mid1, *shuff_add++[1]
+			SADDU.M2	shuff_mid0, shuff_mid1, shuff_mid1
+			SSTW	shuff_mid1, *shuff_add++[1]
+			SADDU.M2	shuff_mid0, shuff_mid1, shuff_mid1
+			SSTW	shuff_mid1, *shuff_add++[1]
+			SADDU.M2	shuff_mid0, shuff_mid1, shuff_mid1
+|			SMOVIL	16, shuff_add0
+			SMOVIH	0, shuff_add0
+|			SSTW	shuff_mid1, *shuff_add++[1]
+			SMVAGA36.M1	shuff_add1:shuff_add0, OR_16
+|			SADDU.M2	shuff_mid0, shuff_mid1, shuff_mid1
+			SSTW	shuff_mid1, *shuff_add++[1]
+.loop_i: .loop
+; cycle(14)
+			SLDH	*h++[1], sh0
+			SLDH	*h++[1], sh1
+			SLDH	*h++[1], sh2
+			SLDH	*h++[1], sh3
+			SNOP		3
+			SVBCAST.M2	sh0, vh0
+			SVBCAST.M1	sh1, vh1
+|			SVBCAST.M2	sh2, vh2
+			SVBCAST.M1	sh3, vh3
+			SSHFLL	1, i, x_ld_add0
+			SMOVIL	0, j
+			SADD.M2	x_ld_add0, input_x0, x_ld_i
+|			SMOVIH	0, j
+			SADD.M1	0, j, k
+|			SADD.M2	0, j, r_ld_add1
+.loop_j: .loop	.unroll(10)
+; cycle(202)
+			SSHFLL	1, j, x_ld_add_compute_9
+			SADD.M2	x_ld_i, x_ld_add_compute_9, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_9
+|			SSHFLL	6, k, r_ld_add0
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_9, x_0_31_9
+			VLDH	*x_ld_9, x_0_15_9
+			VLDH	*+x_ld[2], x_2_17_9
+|			VLDW	*r_ld, r_0_15_9
+			SNOP		4
+			VMOVIL	0, mula_1_9
+			VSHUFH	x_0_31_9, x_0_31_9, x_0_31_shuff_9
+			VMOVIH	0, mula_1_9
+			VMULAS16T.M2	x_0_15_9, vh0, mula_1_9, mula_1_9
+|			VMULAS16T.M3	x_2_17_9, vh2, r_0_15_9, r_0_15_9
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_9, x_1_16_9
+			VBEXT	shuff_ld_3_18, x_0_31_shuff_9, x_3_18_9
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_9, vh1, mula_1_9, mula_1_9
+|			VMULAS16T.M3	x_3_18_9, vh3, r_0_15_9, r_0_15_9
+			SSHFLL	1, j, x_ld_add_compute_8
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_8, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_8
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_9, r_0_15_9, r_0_15_9
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_9, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_8, x_0_31_8
+			VLDH	*x_ld_8, x_0_15_8
+			VLDH	*+x_ld[2], x_2_17_8
+|			VLDW	*r_ld, r_0_15_8
+			SNOP		4
+			VMOVIL	0, mula_1_8
+			VSHUFH	x_0_31_8, x_0_31_8, x_0_31_shuff_8
+			VMOVIH	0, mula_1_8
+			VMULAS16T.M2	x_0_15_8, vh0, mula_1_8, mula_1_8
+|			VMULAS16T.M3	x_2_17_8, vh2, r_0_15_8, r_0_15_8
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_8, x_1_16_8
+			SLT	j, nr, loop_j_9
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_8, x_3_18_8
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_8, vh1, mula_1_8, mula_1_8
+|			VMULAS16T.M3	x_3_18_8, vh3, r_0_15_8, r_0_15_8
+			SSHFLL	1, j, x_ld_add_compute_7
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_7, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_7
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_8, r_0_15_8, r_0_15_8
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_8, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_7, x_0_31_7
+			VLDH	*x_ld_7, x_0_15_7
+			VLDH	*+x_ld[2], x_2_17_7
+|			VLDW	*r_ld, r_0_15_7
+			SNOP		4
+			VMOVIL	0, mula_1_7
+			VSHUFH	x_0_31_7, x_0_31_7, x_0_31_shuff_7
+			VMOVIH	0, mula_1_7
+			VMULAS16T.M2	x_0_15_7, vh0, mula_1_7, mula_1_7
+|			VMULAS16T.M3	x_2_17_7, vh2, r_0_15_7, r_0_15_7
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_7, x_1_16_7
+			SLT	j, nr, loop_j_8
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_7, x_3_18_7
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_7, vh1, mula_1_7, mula_1_7
+|			VMULAS16T.M3	x_3_18_7, vh3, r_0_15_7, r_0_15_7
+			SSHFLL	1, j, x_ld_add_compute_6
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_6, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_6
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_7, r_0_15_7, r_0_15_7
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_7, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_6, x_0_31_6
+			VLDH	*x_ld_6, x_0_15_6
+			VLDH	*+x_ld[2], x_2_17_6
+|			VLDW	*r_ld, r_0_15_6
+			SNOP		4
+			VMOVIL	0, mula_1_6
+			VSHUFH	x_0_31_6, x_0_31_6, x_0_31_shuff_6
+			VMOVIH	0, mula_1_6
+			VMULAS16T.M2	x_0_15_6, vh0, mula_1_6, mula_1_6
+|			VMULAS16T.M3	x_2_17_6, vh2, r_0_15_6, r_0_15_6
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_6, x_1_16_6
+			SLT	j, nr, loop_j_7
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_6, x_3_18_6
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_6, vh1, mula_1_6, mula_1_6
+|			VMULAS16T.M3	x_3_18_6, vh3, r_0_15_6, r_0_15_6
+			SSHFLL	1, j, x_ld_add_compute_5
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_5, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_5
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_6, r_0_15_6, r_0_15_6
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_6, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_5, x_0_31_5
+			VLDH	*x_ld_5, x_0_15_5
+			VLDH	*+x_ld[2], x_2_17_5
+|			VLDW	*r_ld, r_0_15_5
+			SNOP		4
+			VMOVIL	0, mula_1_5
+			VSHUFH	x_0_31_5, x_0_31_5, x_0_31_shuff_5
+			VMOVIH	0, mula_1_5
+			VMULAS16T.M2	x_0_15_5, vh0, mula_1_5, mula_1_5
+|			VMULAS16T.M3	x_2_17_5, vh2, r_0_15_5, r_0_15_5
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_5, x_1_16_5
+			SLT	j, nr, loop_j_6
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_5, x_3_18_5
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_5, vh1, mula_1_5, mula_1_5
+|			VMULAS16T.M3	x_3_18_5, vh3, r_0_15_5, r_0_15_5
+			SSHFLL	1, j, x_ld_add_compute_4
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_4, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_4
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_5, r_0_15_5, r_0_15_5
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_5, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_4, x_0_31_4
+			VLDH	*x_ld_4, x_0_15_4
+			VLDH	*+x_ld[2], x_2_17_4
+|			VLDW	*r_ld, r_0_15_4
+			SNOP		4
+			VMOVIL	0, mula_1_4
+			VSHUFH	x_0_31_4, x_0_31_4, x_0_31_shuff_4
+			VMOVIH	0, mula_1_4
+			VMULAS16T.M2	x_0_15_4, vh0, mula_1_4, mula_1_4
+|			VMULAS16T.M3	x_2_17_4, vh2, r_0_15_4, r_0_15_4
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_4, x_1_16_4
+			SLT	j, nr, loop_j_5
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_4, x_3_18_4
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_4, vh1, mula_1_4, mula_1_4
+|			VMULAS16T.M3	x_3_18_4, vh3, r_0_15_4, r_0_15_4
+			SSHFLL	1, j, x_ld_add_compute_3
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_3, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_3
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_4, r_0_15_4, r_0_15_4
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_4, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_3, x_0_31_3
+			VLDH	*x_ld_3, x_0_15_3
+			VLDH	*+x_ld[2], x_2_17_3
+|			VLDW	*r_ld, r_0_15_3
+			SNOP		4
+			VMOVIL	0, mula_1_3
+			VSHUFH	x_0_31_3, x_0_31_3, x_0_31_shuff_3
+			VMOVIH	0, mula_1_3
+			VMULAS16T.M2	x_0_15_3, vh0, mula_1_3, mula_1_3
+|			VMULAS16T.M3	x_2_17_3, vh2, r_0_15_3, r_0_15_3
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_3, x_1_16_3
+			SLT	j, nr, loop_j_4
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_3, x_3_18_3
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_3, vh1, mula_1_3, mula_1_3
+|			VMULAS16T.M3	x_3_18_3, vh3, r_0_15_3, r_0_15_3
+			SSHFLL	1, j, x_ld_add_compute_2
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_2, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_2
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_3, r_0_15_3, r_0_15_3
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_3, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_2, x_0_31_2
+			VLDH	*x_ld_2, x_0_15_2
+			VLDH	*+x_ld[2], x_2_17_2
+|			VLDW	*r_ld, r_0_15_2
+			SNOP		4
+			VMOVIL	0, mula_1_2
+			VSHUFH	x_0_31_2, x_0_31_2, x_0_31_shuff_2
+			VMOVIH	0, mula_1_2
+			VMULAS16T.M2	x_0_15_2, vh0, mula_1_2, mula_1_2
+|			VMULAS16T.M3	x_2_17_2, vh2, r_0_15_2, r_0_15_2
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_2, x_1_16_2
+			SLT	j, nr, loop_j_3
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_2, x_3_18_2
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_2, vh1, mula_1_2, mula_1_2
+|			VMULAS16T.M3	x_3_18_2, vh3, r_0_15_2, r_0_15_2
+			SSHFLL	1, j, x_ld_add_compute_1
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_1, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_1
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_2, r_0_15_2, r_0_15_2
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_2, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_1, x_0_31_1
+			VLDH	*x_ld_1, x_0_15_1
+			VLDH	*+x_ld[2], x_2_17_1
+|			VLDW	*r_ld, r_0_15_1
+			SNOP		4
+			VMOVIL	0, mula_1_1
+			VSHUFH	x_0_31_1, x_0_31_1, x_0_31_shuff_1
+			VMOVIH	0, mula_1_1
+			VMULAS16T.M2	x_0_15_1, vh0, mula_1_1, mula_1_1
+|			VMULAS16T.M3	x_2_17_1, vh2, r_0_15_1, r_0_15_1
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_1, x_1_16_1
+			SLT	j, nr, loop_j_2
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_1, x_3_18_1
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_1, vh1, mula_1_1, mula_1_1
+|			VMULAS16T.M3	x_3_18_1, vh3, r_0_15_1, r_0_15_1
+			SSHFLL	1, j, x_ld_add_compute_0
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute_0, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld_0
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_1, r_0_15_1, r_0_15_1
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_1, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld_0, x_0_31_0
+			VLDH	*x_ld_0, x_0_15_0
+			VLDH	*+x_ld[2], x_2_17_0
+|			VLDW	*r_ld, r_0_15_0
+			SNOP		4
+			VMOVIL	0, mula_1_0
+			VSHUFH	x_0_31_0, x_0_31_0, x_0_31_shuff_0
+			VMOVIH	0, mula_1_0
+			VMULAS16T.M2	x_0_15_0, vh0, mula_1_0, mula_1_0
+|			VMULAS16T.M3	x_2_17_0, vh2, r_0_15_0, r_0_15_0
+			VBEXT	shuff_ld_1_16, x_0_31_shuff_0, x_1_16_0
+			SLT	j, nr, loop_j_1
+|			VBEXT	shuff_ld_3_18, x_0_31_shuff_0, x_3_18_0
+			SADD.M2	16, j, j
+|			VMULAS16T.M2	x_1_16_0, vh1, mula_1_0, mula_1_0
+|			VMULAS16T.M3	x_3_18_0, vh3, r_0_15_0, r_0_15_0
+			SSHFLL	1, j, x_ld_add_compute
+			SADD.M1	1, k, k
+|			SADD.M2	x_ld_i, x_ld_add_compute, x_ld_add0
+			SMVAGA36.M1	x_ld_add1:x_ld_add0, x_ld
+|			SSHFLL	6, k, r_ld_add0
+|			VADD.M3	mula_1_0, r_0_15_0, r_0_15_0
+			SADD.M2	r_ld_add0, input_r0, r_ld_add0
+|			VSTW	r_0_15_0, *r_ld
+			SMVAGA36.M1	r_ld_add1:r_ld_add0, r_ld
+|			VLDW	*x_ld, x_0_31
+			VLDH	*x_ld, x_0_15
+			VLDH	*+x_ld[2], x_2_17
+|			VLDW	*r_ld, r_0_15
+			SNOP		4
+			VMOVIL	0, mula_1
+			SLT	j, nr, loop_j_0
+|			VSHUFH	x_0_31, x_0_31, x_0_31_shuff
+			SADD.M2	16, j, j
+|			VMOVIH	0, mula_1
+			SLT	j, nr, loop_j
+|			VMULAS16T.M2	x_0_15, vh0, mula_1, mula_1
+|			VMULAS16T.M3	x_2_17, vh2, r_0_15, r_0_15
+[loop_j]		SBR	.loop_j
+|			VBEXT	shuff_ld_1_16, x_0_31_shuff, x_1_16
+			VBEXT	shuff_ld_3_18, x_0_31_shuff, x_3_18
+			VMULAS16T.M2	x_1_16, vh1, mula_1, mula_1
+|			VMULAS16T.M3	x_3_18, vh3, r_0_15, r_0_15
+			SNOP		2
+			VADD.M3	mula_1, r_0_15, r_0_15
+			SADD.M2	1, k, k
+|			VSTW	r_0_15, *r_ld
+.endloop
+; cycle(9)
+			SADD.M2	4, i, i
+			SLT	i, nh, loop_i
+[loop_i]		SBR	.loop_i
+			SNOP		6
+.endloop
+; cycle(4)
+			SMVAGA36.M1	input_r1:input_r0, r_ld
+			SNOP		1
+			SMVAGA36.M1	input_r1:input_r0, r_store
+|			SMOVIL	0, i
+			SMOVIH	0, i
+.update_store: .loop
+; cycle(12)
+			VLDDWM2	*r_ld++[OR_16], r_m2ld_1:r_m2ld_0
+			SNOP		2
+			SADD.M2	1, i, i
+			SLT	i, vr_len, loop_store
+[loop_store]		SBR	.update_store
+			SNOP		2
+			VSHFAR	15, r_m2ld_1, r_m2ld_1
+			VSHFAR	15, r_m2ld_0, r_m2ld_0
+			VBALE2	r_m2ld_0, r_m2ld_1, r_m2ld_0
+			VSTW	r_m2ld_0, *r_store++[OR_16]
+.endloop
+.size DSP_fir_r4,-DSP_fir_r4

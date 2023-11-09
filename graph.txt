@@ -1,0 +1,334 @@
+
+
+
+
+0:	SMVAGA36	input_vp1:input_vp2			vp_add 
+children: 
+1:	SMVAGA36	input_xp1:input_xp2			xp_add 
+children: 
+2:	SMOVIL	0			n 
+children: (3, 1) 
+3:	SMOVIH	0			n 
+children: (4, 1) (5, 1) 
+4:	SADD	0	n		retval 
+children: 
+5:	SADD	0	n		shuff_add1 
+children: (8, 1) 
+6:	SMOVIL	16			shuff_add0 
+children: (7, 1) 
+7:	SMOVIH	0			shuff_add0 
+children: (8, 1) 
+8:	SMVAGA36	shuff_add1:shuff_add0			OR_16 
+children: 
+
+
+0:	SSUB	n	num		num16 
+children: (1, 1) 
+1:	SLT	16	num16		loop_16 
+children: (2, 1) 
+2:loop_16	SBR	.A1			 
+children: 
+
+
+0:	VLDW	*vp_add++[1]			tmp_vp 
+children: (1, 8) 
+1:	VMVCGC	tmp_vp			SVR 
+children: 
+
+0:	SMVCCG	SVR0			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L16			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: (1, 1) 
+1:	SLT	n	num		loop_bool 
+children: (2, 1) 
+2:loop_bool	SBR	.boolloop2			 
+children: 
+
+
+0:	SBR	.A2			 
+children: 
+
+
+0:	VLDW	*vp_add++[OR_16]			tmp_vp 
+children: (1, 8) 
+1:	VMVCGC	tmp_vp			SVR 
+children: 
+
+0:	SMVCCG	SVR0			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L0			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR1			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L1			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR2			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L2			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR3			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L3			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR4			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L4			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR5			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L5			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR6			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L6			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR7			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L7			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR8			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L8			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR9			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L9			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR10			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L10			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR11			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L11			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR12			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L12			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR13			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L13			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR14			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L14			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+1:	SMVCCG	SVR15			mid 
+children: 
+
+0:	SEQ	0	mid		loop_vp 
+children: (1, 1) 
+1:loop_vp	SBR	.L15			 
+children: 
+
+0:	SSTW	n			*xp_add++[1] 
+children: 
+1:	SADD	1	retval		retval 
+children: 
+
+
+0:	SADD	1	n		n 
+children: 
+
+
+0:	SLT	n	num		loop_bool 
+children: (1, 1) 
+1:loop_bool	SBR	.boolloop			 
+children: 
+
+
+
+
