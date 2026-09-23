@@ -1,0 +1,268 @@
+.global atansp
+
+.input      len, input_x1:input_x0, output_y1:output_y0          ; g = a = input  res=output
+.gen_var    tmp0:tmp1, tmp2, x2, x1:x0, y2, y1:y0, const1.05, const2, c1, c2, c3, c4, c5, c6, c7, c8, sign2, sign1, sign0, res2, res1, res0, flag2, flag1, flag0, a1, a0,a31, fabsx0, fabsx1, fabsx2, cond0, cond1, cond2, x3, x4, x5,x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, coef0, coef1, coef2
+.add_var    x, y, offset
+
+		    SMVAGA36    input_x1:input_x0,     x
+			SMVAGA36    output_y1:output_y0,   y
+			
+			SMOVIL      	16,     tmp1
+			SMOVIH			0,		tmp1
+			SMOVIL			0,		tmp0
+			SMVAGA36    	tmp0:tmp1,   offset 
+			SMOVIL      	3,      tmp2
+			SMVCGC      	tmp2,   SCR
+			
+.atansp_loop: .loop
+
+            VLDDW       *x++[offset],        x1:x0
+			VLDW        *x++[offset],        x2
+			
+			VMOVIL      0,                   a1
+			VMOVIH      0x3F800000,          a1               ;a1=1
+			VMOVIL      0,                   a0
+			VMOVIH      0,                   a0               ;a0=0
+			
+			VMOV        a1,                  sign0
+			VMOV        a1,                  sign1
+			VMOV        a1,                  sign2            ;sign=1
+			
+			VMOVIL      31,                  a31
+			VMOVIH      0,                   a31              ;31
+			
+            VFCMPGS32   a0, x0,              cond0
+			VFCMPGS32   a0, x1,              cond1 
+	        VFCMPGS32   a0, x2,              cond2            ;g<0?
+			
+[cond0]     VBEX        a31, sign0,          sign0
+[cond1]     VBEX        a31, sign1,          sign1
+[cond2]     VBEX        a31, sign2,          sign2            ;if (g<0) then sign = -sign
+	
+	        VMOV        a0,                  flag0
+			VMOV        a0,                  flag1
+			VMOV        a0,                  flag2            ;flag=0 
+			
+			VFABSS32     x0,                  fabsx0
+			VFABSS32     x1,                  fabsx1
+			VFABSS32     x2,                  fabsx2           ;fabs(g) 
+			
+			VMOVIL      0x6666,              const1.05
+			VMOVIH      0x3F860000,          const1.05        ;const=1.05
+			
+			VFCMPGS32   fabsx0, const1.05,   cond0
+			VFCMPGS32   fabsx1, const1.05,   cond1
+			VFCMPGS32   fabsx2, const1.05,   cond2            ;fabs(g) > 1.05 ?
+			
+[cond0]     VMOV        a1,                  flag0	
+[cond1]     VMOV        a1,                  flag1
+[cond2]     VMOV        a1,                  flag2	          ;if then flag=1	
+			
+[cond0]     VFRCPS32    x0,                  x3	
+[cond1]     VFRCPS32    x1,                  x4	
+[cond2]     VFRCPS32    x2,                  x5			       ;1/g 
+			
+[cond0]     VFMULS32    x0, x3,              x6
+[cond1]     VFMULS32    x1, x4,              x7
+[cond2]     VFMULS32    x2, x5,              x8                ;g*1/g 
+
+            VMOVIL      0,                   const2
+			VMOVIH      0x40000000,          const2            ;const=2
+
+[cond0]     VFSUBS32    x6, const2,          x9
+[cond1]     VFSUBS32    x7, const2,          x10
+[cond2]     VFSUBS32    x8, const2,          x11               ;2-g*1/g
+
+[cond0]     VFMULS32    x3, x9,              x12
+[cond1]     VFMULS32    x4, x10,             x13
+[cond2]     VFMULS32    x5, x11,             x14               ;1/g*(2-g*1/g)
+            
+[cond0]     VFMULS32    x12, x0,             x15
+[cond1]     VFMULS32    x13, x1,             x16
+[cond2]     VFMULS32    x14, x2,             x17               ;g*1/g  
+
+[cond0]     VFSUBS32    x15, const2,         x18
+[cond1]     VFSUBS32    x16, const2,         x19
+[cond2]     VFSUBS32    x17, const2,         x20               ;2-g*1/g
+
+[cond0]     VFMULS32    x18, x12,            x0
+[cond1]     VFMULS32    x19, x13,            x1
+[cond2]     VFMULS32    x20, x14,            x2                ;g=1/g  
+
+            VFMULS32    x0, x0,              x3
+			VFMULS32    x1, x1,              x4
+			VFMULS32    x2, x2,              x5                ;g2
+			
+			VFMULS32    x3, x3,              x6
+			VFMULS32    x4, x4,              x7
+			VFMULS32    x5, x5,              x8                ;g4
+			
+			VFMULS32    x3, x6,              x9
+			VFMULS32    x4, x7,              x10
+			VFMULS32    x5, x8,              x11               ;g6
+			
+			VFMULS32    x6, x6,              x12
+			VFMULS32    x7, x7,              x13
+			VFMULS32    x8, x8,              x14               ;g8
+			
+			VFMULS32    x3, x12,             x15
+			VFMULS32    x4, x13,             x16
+			VFMULS32    x5, x14,             x17               ;g10
+			
+			VFMULS32    x9,  x9,             x18
+			VFMULS32    x10, x10,            x19
+			VFMULS32    x11, x11,            x20               ;g12 
+			
+			VMOVIL      0xD623,              c1	        
+			VMOVIH      0x3B160000,          c1                ;c1 = 0.00230158202
+			
+			VMOVIL      0x7BB5,              c2
+			VMOVIH      0xBC640000,          c2                ;c2 = -0.0139455100
+			
+			VMOVIL      0x435B,              c3	        
+			VMOVIH      0x3D210000,          c3                ;c3 = 0.03937087815832
+			
+			VMOVIL      0x2FBE,              c4	        
+			VMOVIH      0xBD940000,          c4                ;c4 = -0.0723566916
+			
+			VMOVIL      0x7AF5,              c5	        
+			VMOVIH      0x3DD70000,          c5                ;c5 = 0.10521499322
+			
+			VMOVIL      0x271D,              c6	        
+			VMOVIH      0xBE110000,          c6                ;c6 = -0.14175076797
+			
+			VMOVIL      0xB0C0,              c7         
+			VMOVIH      0x3E4C0000,          c7                ;c7 = 0.19989300877
+			
+			VMOVIL      0xAA23,              c8         
+			VMOVIH      0xBEAA0000,          c8                ;c8 = -0.3333293001
+			
+			VFMULS32    c1, x6,              res0
+			VFMULS32    c1, x7,              res1
+			VFMULS32    c1, x8,              res2              ;res=c1*g4 
+			
+			VFMULAS32   c2, x3, res0,        res0
+			VFMULAS32   c2, x4, res1,        res1
+			VFMULAS32   c2, x5, res2,        res2              ;res=res+c2*g2 
+			
+			VFADDS32    c3, res0,            res0 
+			VFADDS32    c3, res1,            res1
+			VFADDS32    c3, res2,            res2              ;res=res+c3 
+			
+			VFMULS32    res0, x18,           res0
+			VFMULS32    res1, x19,           res1
+			VFMULS32    res2, x20,           res2              ;res=res*g12 
+			
+			VFMULAS32   c4, x15, res0,       res0   
+            VFMULAS32   c4, x16, res1,       res1
+            VFMULAS32   c4, x17, res2,       res2              ;res=res+c4*g10
+
+            VFMULAS32   c5, x12, res0,       res0
+            VFMULAS32   c5, x13, res1,       res1
+            VFMULAS32   c5, x14, res2,       res2              ;res=res+c5*g8
+
+            VFMULAS32   c6, x9,  res0,       res0 
+            VFMULAS32   c6, x10, res1,       res1
+            VFMULAS32   c6, x11, res2,       res2              ;res=res+c6*g6 			
+			
+			VFMULAS32   c7, x6, res0,        res0
+			VFMULAS32   c7, x7, res1,        res1
+			VFMULAS32   c7, x8, res2,        res2              ;res=res+c7*g4
+			
+			VFMULAS32   c8, x3, res0,        res0
+			VFMULAS32   c8, x4, res1,        res1
+			VFMULAS32   c8, x5, res2,        res2              ;res=res+c8*g2 
+			
+			VFMULS32    x0, res0,            res0
+			VFMULS32    x1, res1,            res1
+			VFMULS32    x2, res2,            res2              
+			
+			VFADDS32    x0, res0,            res0
+			VFADDS32    x1, res1,            res1
+			VFADDS32    x2, res2,            res2              ;res=res*g+g 
+			
+			VMOVIL      0x0FDA,              coef0
+			VMOVIH      0x3FC90000,          coef0             
+			VMOV        coef0,               coef1
+			VMOV        coef0,               coef2             ;coef = 1.5707963267948966192313216916398
+
+            VFCMPES32   a0, flag0,           cond0
+			VFCMPES32   a0, flag1,           cond1
+			VFCMPES32   a0, flag2,           cond2             ;flag=0?
+			
+[cond0]     VMOV        a0,                  coef0
+[cond1]     VMOV        a0,                  coef1
+[cond2]     VMOV        a0,                  coef2             ;if(!flag) then coef = 0
+
+            VFCMPGS32   a0, sign0,           cond0
+			VFCMPGS32   a0, sign1,           cond1
+			VFCMPGS32   a0, sign2,           cond2             ;sign<0?
+			
+[cond0]     VBEX        a31, coef0,          coef0	
+[cond1]     VBEX        a31, coef1,          coef1
+[cond2]     VBEX        a31, coef2,          coef2             ;if(sign < 0) then coef = - coef
+
+            VFCMPES32   a0, flag0,           cond0
+			VFCMPES32   a0, flag1,           cond1
+			VFCMPES32   a0, flag2,           cond2             ;flag=0?
+			
+[!cond0]    VFSUBS32    res0, coef0,         res0
+[!cond1]    VFSUBS32    res1, coef1,         res1
+[!cond2]    VFSUBS32    res2, coef2,         res2              ;if (flag) then res = coef - res
+
+[cond0]     VFADDS32    res0, coef0,         res0
+[cond1]     VFADDS32    res1, coef1,         res1
+[cond2]     VFADDS32    res2, coef2,         res2              ;if (!flag) then res = coef + res
+
+            VMOV        res0, y0
+			VMOV        res1, y1
+			VMOV        res2, y2
+			
+            VSTDW       y1:y0, *y++[offset]
+			VSTW        y2,    *y++[offset]
+			SSUBU       48, len,   len 
+[len]       SBR         .atansp_loop
+
+.endloop
+
+.size atansp, -.atansp  			
+			
+
+
+
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+	

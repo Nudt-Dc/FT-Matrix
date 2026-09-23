@@ -1,0 +1,98 @@
+.global DSPF_sp_iir
+
+.input input_y11:input_y10, input_x1:input_x0, input_y21:inputy20, input_hb1:input_hb0, input_ha1:input_ha0, int_n
+.gen_var  v_hb0, v_hb1, v_hb2, v_hb3, v_hb4, tmp_hb, n0, x4, x3, x2, x1, x0,i, loop_i
+.gen_var  y1, y2, tmp2:tmp1, tmp4:tmp3, tmp5, zero, tmp_ha, v_ha, tmp_y10, tmp_y11, tmp_y0
+.add_var  y1_address, x_address, y2_address, hb_address, ha_address, offset_i,offset_j
+
+SMVAGA36 input_y11:input_y10, y1_address
+SMVAGA36 input_x1:input_x0, x_address
+SMVAGA36 input_y21:inputy20, y2_address
+SMVAGA36 input_hb1:input_hb0, hb_address
+SMVAGA36 input_ha1:input_ha0, ha_address
+
+VMOVIL 0, zero
+VMOVIH 0, zero
+
+SMOVIL	0, tmp1
+SMOVIH  0, tmp1
+SADD    0,tmp1,i
+SADD    0, tmp1,tmp2
+SMVAGA36 tmp2:tmp1, offset_i
+SADD	  4, tmp1,tmp3
+SADD    0, tmp1,tmp4
+SMVAGA36 tmp4:tmp3, offset_j
+
+
+SLDW *+hb_address[0], tmp_hb
+SVBCAST tmp_hb, v_hb0
+SLDW *+hb_address[1], tmp_hb
+SVBCAST tmp_hb, v_hb1
+SLDW *+hb_address[2], tmp_hb
+SVBCAST tmp_hb, v_hb2
+SLDW *+hb_address[3], tmp_hb
+SVBCAST tmp_hb, v_hb3
+SLDW *+hb_address[4], tmp_hb
+SVBCAST tmp_hb, v_hb4
+
+.DSPF_sp_iir_firstloop:  .loop
+VLDW *+x_address[offset_i], x4
+SADDA 1, offset_i, offset_i
+VLDW *+x_address[offset_i], x3
+SADDA 1, offset_i, offset_i
+VLDW *+x_address[offset_i], x2
+SADDA 1, offset_i, offset_i
+VLDW *+x_address[offset_i], x1
+SADDA 1, offset_i, offset_i
+VLDW *+x_address[offset_i], x0
+VLDW *+y1_address[offset_i], y1
+VMOV   zero,y2
+VFMULAS32 v_hb0, x0, y1, y1
+VFMULAS32 v_hb1, x1, y2, y2
+VFMULAS32 v_hb2, x2, y1, y1
+VFMULAS32 v_hb3, x3, y2, y2
+VFMULAS32 v_hb4, x4, y1, y1
+VFADDS32  y2, y1, y1
+VSTW y1, *+y1_address[offset_i]
+SADDA 12, offset_i, offset_i
+SADD  16, i, i
+SLT   i, int_n,loop_i
+[loop_i] SBR  .DSPF_sp_iir_firstloop
+.endloop
+
+
+VMVCGC zero,SVR
+SLDW *+ha_address[1], tmp_ha
+SMVCGC tmp_ha, SVR0
+SLDW *+ha_address[2], tmp_ha
+SMVCGC tmp_ha, SVR1
+SLDW *+ha_address[3], tmp_ha
+SMVCGC tmp_ha, SVR2
+SLDW *+ha_address[4], tmp_ha
+SMVCGC tmp_ha, SVR3
+VMVCCG SVR, v_ha
+
+
+SADD  0,tmp1,i
+
+.DSPF_sp_iir_secondloop:  .loop
+VLDW *+y1_address[offset_j], tmp_y10
+VSTW tmp_y10, *y2_address++[1]
+SADDA 1, offset_j, offset_j
+VLDW *+y1_address[offset_j], tmp_y11
+VMVCGC tmp_y10,SVR
+SMVCCG SVR0,tmp_y0
+SVBCAST tmp_y0, y1
+VFMULS32 v_ha,y1,y1
+VFSUBS32 y1, tmp_y11, y1
+VSTW y1,*+y1_address[offset_j]
+SADD  1, i, i
+SLT   i, int_n,loop_i
+[loop_i]SBR .DSPF_sp_iir_secondloop
+.endloop
+
+VSTW y1, *y2_address++[1]
+
+
+.size DSPF_sp_iir, -.DSPF_sp_iir
+

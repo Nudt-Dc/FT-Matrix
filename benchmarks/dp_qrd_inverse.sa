@@ -1,0 +1,395 @@
+.global DSPF_dp_qrd_inverse
+
+.input Nrows, Ncols, input_Q1:input_Q0, input_R1:input_R0, input_invA1:input_invA0, input_invR1:input_invR0 
+
+.gen_var Vector_Size, N
+.gen_var temp, tempB:tempA, judge
+.gen_var Number0, Number47, Number128, double2_B:double2_A
+
+.gen_var LOOP1, LOOP2, LOOP3
+.gen_var backup0_B:backup0_A, backup1_B:backup1_A, backup2_B:backup2_A
+.gen_var backup3_B:backup3_A, backup4_B:backup4_A, backup5_B:backup5_A
+.gen_var tempRC0_B:tempRC0_A, tempRC1_B:tempRC1_A, tempRC2_B:tempRC2_A
+.gen_var tempRR0_B:tempRR0_A, tempRR1_B:tempRR1_A, tempRR2_B:tempRR2_A
+
+.gen_var factor1_B:factor1_A, factor2_B:factor2_A
+.gen_var h1_B:h1_A, h2_B:h2_A,
+
+.add_var address_Q, address_R, address_invA, address_invR
+.add_var addr_code1, addr_code2, addr_code3, addr_code4
+.add_var offset_VSize16, offset16, offset48    ;用于向量的偏移变量
+
+.add_var addr_scalar_col, addr_scalar_row      ;标量访存的基址
+.add_var offset_row, offset_col                ;标量访存的偏移
+
+;矩阵乘法
+.gen_var LOOP4, LOOP5, LOOP6
+.gen_var tempQ1:tempQ0, tempR1:tempR0, tempA1:tempA0
+.gen_var A1:A0, B1:B0, C1:C0, D1:D0, E1:E0, F1:F0, G1:G0, H1:H0, I1:I0, J1:J0, K1:K0, L1:L0, M1:M0, N1:N0, O1:O0, P1:P0
+
+.add_var addr_MQ, addr_MR, addr_MA
+.add_var offset_Ncols
+
+
+;以下为输入矩阵地址重新赋值到变量
+SMVAGA36    input_Q1:input_Q0, address_Q
+SMVAGA36    input_R1:input_R0, address_R
+SMVAGA36    input_invA1:input_invA0, address_invA
+SMVAGA36    input_invR1:input_invR0, address_invR
+;以下让线性汇编器把地址变量识别为相应的寄存器
+VLDDW       *+address_Q[0], backup0_B:backup0_A
+SLDDW       *+address_R[0], factor1_B:factor1_A
+VLDDW       *+address_invR[0], backup0_B:backup0_A
+SLDDW       *+address_invA[0], factor1_B:factor1_A
+
+
+;以下为通用数字变量赋值
+SMOVIL      0, Number0
+SMOVIH      0, Number0
+
+SMOVIL      47, Number47
+SMOVIH      0, Number47
+
+SMOVIL      128, Number128
+SMOVIH      0, Number128
+
+SMOVIL      0, tempB
+SMOVIH      0, tempB
+
+SMOVIL      0, double2_A
+SMOVIH      0, double2_A
+SMOVIL      0x40000000, double2_B
+SMOVIH      0x40000000, double2_B
+
+;以下为Vector_Size 和 N 赋值
+SADD        15, Ncols, Vector_Size
+SADD        Number47, Ncols, N
+
+SMOVIL      0, temp
+SMOVIH      0, temp 
+
+    ;以下循环实现 i = Vector_Size / 16
+    .GEMMV_LOOP: .loop
+    SSUB    16, Vector_Size, Vector_Size
+    SADD    1, temp, temp
+    SLT     15, Vector_Size, judge             
+    [judge]    SBR     .GEMMV_LOOP              
+    .endloop
+
+SMOV    temp, Vector_Size  ;Vector_Size = i;
+
+SMOVIL      0, temp
+SMOVIH      0, temp
+
+    ;以下循环实现 j = N / 48
+    .GEMMN_LOOP: .loop
+    SSUB    Number47, N, N
+    SSUB    1, N, N   ;N -= 48 (N -= (47+1))
+    SADD    1, temp, temp
+    SLT     Number47, N, judge             
+    [judge]    SBR     .GEMMN_LOOP              
+    .endloop
+
+SMULISU 3, temp, N       ;N = j * 3
+
+;以下为offset赋值
+SMULISU     16, Vector_Size, tempA                                                    
+SMVAGA36    tempB:tempA, offset_VSize16 
+
+SMOVIL      16, tempA
+SMOVIH      0, tempA
+SMVAGA36    tempB:tempA, offset16
+
+SMOVIL      48, tempA
+SMOVIH      0, tempA
+SMVAGA36    tempB:tempA, offset48 
+
+SMOV        Ncols, tempA
+SMVAGA36    tempB:tempA, offset_row
+
+SADD        1, tempA, tempA
+SMVAGA36    tempB:tempA, offset_col
+
+;矩阵乘offset
+SMOV        Ncols, tempA
+SMVAGA36    tempB:tempA, offset_Ncols
+
+
+
+;为循环体1赋值
+SSUB        1, Ncols, LOOP1
+
+;为基址addr_code1赋值
+SMULISU     Ncols, Vector_Size, tempA
+SMULISU     tempA, Number128, tempA
+SADDA       tempB:tempA, address_invR, addr_code1
+
+;为标量访存1基址赋值
+SMULISU     Ncols, LOOP1, tempA
+SADD        LOOP1, tempA, tempA
+SMULISU     8, tempA, tempA
+SADDA       tempB:tempA, address_R, addr_scalar_col
+
+;循环1
+.GEMM1_LOOP: .loop
+
+;备份第(col + 1)行  load
+VLDDW       *addr_code1++[offset16], backup0_B:backup0_A
+VLDDW       *addr_code1++[offset16], backup1_B:backup1_A
+VLDDW       *+addr_code1[0], backup2_B:backup2_A
+
+SLDDW       *addr_scalar_col--[offset_col], factor2_B:factor2_A ;访存
+SFRCPD      factor2_B:factor2_A, factor1_B:factor1_A            ;取倒数
+
+;迭代第一次，得到结果X[n+1]，并将 X[n+1] --> X[n]
+SFMULD       factor2_B:factor2_A, factor1_B:factor1_A, tempB:tempA          
+SFSUBD       tempB:tempA, double2_B:double2_A, tempB:tempA
+SFMULD       factor1_B:factor1_A, tempB:tempA, factor1_B:factor1_A
+
+;迭代第二次，得到结果X[n+1]，并将 X[n+1] --> X[n]
+SFMULD       factor2_B:factor2_A, factor1_B:factor1_A, tempB:tempA          
+SFSUBD       tempB:tempA, double2_B:double2_A, tempB:tempA
+SFMULD       factor1_B:factor1_A, tempB:tempA, factor1_B:factor1_A
+
+SVBCAST2     factor1_B:factor1_A, h1_B:h1_A                      ;广播
+
+SMOV         Number0, tempB
+
+    ;为循环体2赋值
+    SMOVIL          0, LOOP2
+    SMOVIH          0, LOOP2
+
+    ;为基址addr_code2赋值
+    SMULISU     LOOP1, Vector_Size, tempA
+    SMULISU     tempA, Number128, tempA
+    SADDA       tempB:tempA, address_invR, addr_code2
+
+    .GEMM2_LOOP: .loop
+
+    ;处理第col行 load
+    VLDDWM2         *addr_code2++[offset16], tempRC0_B:tempRC0_A
+    VLDDWM2         *addr_code2++[offset16], tempRC1_B:tempRC1_A
+    VLDDWM2         *+addr_code2[0], tempRC2_B:tempRC2_A
+
+        ;为循环体3赋值
+        SSUB        1, LOOP1, LOOP3
+        SLT         LOOP3, Number0, judge    ;判断是否满足循环条件：if(row < 0) judge = 1
+        [judge] SBR     .GEMM3_ENDLOOP       ;不满足条件则循环3跳转
+
+        ;为基址addr_code3赋值
+        SMULISU     LOOP1, Vector_Size, tempA
+        SMULISU     tempA, Number128, tempA
+        SADDA       tempB:tempA, address_invR, addr_code3
+
+        ;为基址addr_code4赋值
+        SMULISU     LOOP3, Vector_Size, tempA
+        SADD        LOOP2, tempA, tempA
+        SMULISU     tempA, Number128, tempA
+        SADDA       tempB:tempA, address_invR, addr_code4
+
+        ;为标量访存2基址赋值
+        SMULISU     Ncols, LOOP3, tempA
+        SADD        LOOP1, tempA, tempA
+        SMULISU     8, tempA, tempA
+        SADDA       tempB:tempA, address_R, addr_scalar_row
+        
+        .GEMM3_LOOP: .loop
+
+        ;标量访存
+        SLDDW       *addr_scalar_row--[offset_row], factor2_B:factor2_A             ;访存
+        SFMULD      factor2_B:factor2_A, factor1_B:factor1_A, factor2_B:factor2_A
+        SMOVIL      31, temp                                                        ;取反
+        SMOVIH      0, temp                                                         ;取反
+        SBEX        temp, factor2_B, factor2_B                                      ;取反
+        SVBCAST2    factor2_B:factor2_A, h2_B:h2_A                                  ;广播
+
+        ;备份第(row + 1)行 load
+        VLDDW       *addr_code3++[offset16], backup3_B:backup3_A
+        VLDDW       *addr_code3++[offset16], backup4_B:backup4_A
+        VLDDW       *+addr_code3[0], backup5_B:backup5_A
+
+        .label1:
+
+        ;处理第(0-->col)行 load
+        VLDDWM2         *addr_code4++[offset16], tempRR0_B:tempRR0_A
+        VLDDWM2         *addr_code4++[offset16], tempRR1_B:tempRR1_A
+        VLDDWM2         *+addr_code4[0], tempRR2_B:tempRR2_A
+
+        ;处理第(0-->col)行 process
+        VFMULAD         h2_B:h2_A, tempRC0_B:tempRC0_A, tempRR0_B:tempRR0_A, tempRR0_B:tempRR0_A
+        VFMULAD         h2_B:h2_A, tempRC1_B:tempRC1_A, tempRR1_B:tempRR1_A, tempRR1_B:tempRR1_A
+        VFMULAD         h2_B:h2_A, tempRC2_B:tempRC2_A, tempRR2_B:tempRR2_A, tempRR2_B:tempRR2_A
+
+        ;处理第(0-->col)行 store
+        VSTDWM16        tempRR2_B:tempRR2_A, *addr_code4--[offset16]
+        VSTDWM16        tempRR1_B:tempRR1_A, *addr_code4--[offset16]
+        VSTDWM16        tempRR0_B:tempRR0_A, *addr_code4--[offset_VSize16]
+
+        .label2:
+
+        ;备份第(row + 1)行 store
+        VSTDW       backup5_B:backup5_A, *addr_code3--[offset16]
+        VSTDW       backup4_B:backup4_A, *addr_code3--[offset16]
+        VSTDW       backup3_B:backup3_A, *addr_code3--[offset_VSize16]
+
+        SSUB        1, LOOP3, LOOP3           ;row--
+        SLT         LOOP3, Number0, judge     ;if(row < 0) judge = 1
+        [!judge] SBR     .GEMM3_LOOP          ;循环3跳转
+        .GEMM3_ENDLOOP:
+        .endloop                              ;循环3结束
+
+    ;处理第col行 process
+    VFMULD          h1_B:h1_A, tempRC0_B:tempRC0_A, tempRC0_B:tempRC0_A
+    VFMULD          h1_B:h1_A, tempRC1_B:tempRC1_A, tempRC1_B:tempRC1_A
+    VFMULD          h1_B:h1_A, tempRC2_B:tempRC2_A, tempRC2_B:tempRC2_A
+
+    ;处理第col行 store
+    VSTDWM16        tempRC2_B:tempRC2_A, *addr_code2--[offset16]
+    VSTDWM16        tempRC1_B:tempRC1_A, *addr_code2--[offset16]
+    VSTDWM16        tempRC0_B:tempRC0_A, *addr_code2++[offset48]
+
+    SADD            3, LOOP2, LOOP2     ;k += 3
+    SLT             LOOP2, N, judge     ;if(k < N) judge = 1
+    [judge] SBR     .GEMM2_LOOP         ;循环2跳转
+    .endloop                            ;循环2结束    
+
+
+;备份第(col + 1)行  store
+VSTDW       backup2_B:backup2_A, *addr_code1--[offset16]
+VSTDW       backup1_B:backup1_A, *addr_code1--[offset16]
+VSTDW       backup0_B:backup0_A, *addr_code1--[offset_VSize16]
+
+SSUB        1, LOOP1, LOOP1         ;col--
+SLT         LOOP1, Number0, judge   ; if(col < 0) judge = 1
+[!judge] SBR    .GEMM1_LOOP         ;循环1跳转
+.endloop                            ;循环1结束
+
+
+;矩阵乘法
+
+SMOVIL      0, LOOP4
+SMOVIH      0, LOOP4    ;为循环体A赋值
+
+.GEMMa_LOOP: .loop      
+ 
+    SMOVIL      0, LOOP5
+    SMOVIH      0, LOOP5    ;为循环体B赋值
+
+    SMULISU     Number128, LOOP4, tempA
+    SADDA       tempB:tempA, address_Q, addr_MQ    ;为基址addr_MQ赋值
+
+    .GEMMb_LOOP: .loop      
+
+    VLDDWM2     *addr_MQ++[offset_Ncols], tempQ1:tempQ0   ;取tempQ
+
+        SMOVIL      0, LOOP6
+        SMOVIH      0, LOOP6    ;为循环体C赋值
+
+        SMULISU     Number128, LOOP4, tempA
+        SADDA       tempB:tempA, address_invR, addr_MR    ;为基址addr_MR赋值
+
+        SMULISU     8, LOOP5, tempA
+        SADDA       tempB:tempA, address_invA, addr_MA    ;为基址addr_MA赋值  
+
+        .GEMMc_LOOP: .loop       
+
+        VLDDWM2     *addr_MR++[offset_VSize16], tempR1:tempR0 ;取tempR
+        VFMULD      tempR1:tempR0, tempQ1:tempQ0, tempR1:tempR0
+
+        VMVCGC      tempR0, SVR
+
+        SMVCCG      SVR0, A0
+        SMVCCG      SVR1, B0
+        SMVCCG      SVR2, C0
+        SMVCCG      SVR3, D0
+        SMVCCG      SVR4, E0
+        SMVCCG      SVR5, F0
+        SMVCCG      SVR6, G0
+        SMVCCG      SVR7, H0
+        SMVCCG      SVR8, I0
+        SMVCCG      SVR9, J0
+        SMVCCG      SVR10, K0
+        SMVCCG      SVR11, L0
+        SMVCCG      SVR12, M0
+        SMVCCG      SVR13, N0
+        SMVCCG      SVR14, O0
+        SMVCCG      SVR15, P0
+
+.label3:
+
+        VMVCGC      tempR1, SVR
+
+        SMVCCG      SVR0, A1
+        SMVCCG      SVR1, B1
+        SMVCCG      SVR2, C1
+        SMVCCG      SVR3, D1
+        SMVCCG      SVR4, E1
+        SMVCCG      SVR5, F1
+        SMVCCG      SVR6, G1
+
+        ;SFADDA双精度指令的读写窗口为两拍
+        ;注意混用.M1和.M2功能单元
+        SMVCCG      SVR7, H1
+        SFADDD      A1:A0, F1:F0, A1:A0
+
+        SMVCCG      SVR8, I1
+        SFADDD      B1:B0, G1:G0, B1:B0
+
+        SMVCCG      SVR9, J1
+        SFADDD      C1:C0, H1:H0, C1:C0
+
+        SMVCCG      SVR10, K1
+        SFADDD      D1:D0, I1:I0, D1:D0
+
+        SMVCCG      SVR11, L1
+        SFADDD      E1:E0, J1:J0, E1:E0
+
+        SMVCCG      SVR12, M1
+        SFADDD      A1:A0, K1:K0, A1:A0
+
+        SMVCCG      SVR13, N1
+        SFADDD      B1:B0, L1:L0, B1:B0
+
+        SMVCCG      SVR14, O1
+        SFADDD      C1:C0, M1:M0, C1:C0
+
+        SMVCCG      SVR15, P1
+        SFADDD      D1:D0, N1:N0, D1:D0
+
+        SFADDD      E1:E0, O1:O0, E1:E0
+
+        SFADDD      A1:A0, P1:P0, A1:A0
+        ;SNOP       1
+
+        SFADDD      B1:B0, C1:C0, B1:B0   ; B += C
+        ;SNOP       1
+
+        SFADDD      D1:D0, E1:E0, D1:D0   ; D += E
+        ;SNOP       2
+
+        SFADDD      A1:A0, B1:B0, A1:A0   ; A += B
+        ;SNOP       4
+
+        SFADDD      A1:A0, D1:D0, A1:A0   ; A += D
+
+        ;invA[col + row * Ncols] += SVR.sum
+        SLDDW       *+addr_MA[0], tempA1:tempA0                ;取tempA
+        SFADDD      tempA1:tempA0, A1:A0, tempA1:tempA0        ;tempA += sum
+        SSTDW       tempA1:tempA0, *addr_MA++[offset_row]      ;写回tempA
+
+        SADD        1, LOOP6, LOOP6               ;row += 1
+        SLT         LOOP6, Nrows, judge           ;if(row < Nrows) judge = 1
+        [judge] SBR     .GEMMc_LOOP               ;循环c跳转
+        .endloop                                  ;循环c结束
+
+    SADD        1, LOOP5, LOOP5                   ;col += 1
+    SLT         LOOP5, Ncols, judge               ;if(col < Ncols) judge = 1
+    [judge] SBR     .GEMMb_LOOP                   ;循环b跳转
+    .endloop                                      ;循环b结束
+
+SADD        1, LOOP4, LOOP4                       ;k += 1
+SLT         LOOP4, Vector_Size, judge             ;if(k < Vector_Size) judge = 1
+[judge] SBR     .GEMMa_LOOP                       ;循环a跳转
+.endloop   
+
+.size DSPF_dp_qrd_inverse, .-DSPF_dp_qrd_inverse

@@ -1,0 +1,185 @@
+.global DSP_iir_lat
+;输入参数
+.input      input_x1:input_x0, nx, input_k1:input_k0, nk, input_b1:input_b0, input_r1:input_r0, input_yt1:input_yt0
+;中间变量
+.gen_var    i, j,addrmid1:addrmid0, flagnk, flagx,  loop_i, loop_j, zero, temp_zero,mid_NULL
+;x
+.gen_var    temp_short_x1, temp_short_x2,temp_x1,temp_x2,x_i, temp_mid_x1,temp_mid_x2
+;k
+.gen_var    temp_short_k1,temp_short_k2
+;b
+.gen_var    temp_bmid,temp_int_b1, temp_int15_b1, temp_int_b2, temp_int15_b2
+.gen_var    temp_short_b1, temp_short_b2
+;r
+.gen_var    temp_rmid1
+.gen_var    r_m2ld_1:r_m2ld_0
+;yt
+.gen_var    temp_yt1,temp_yt2
+;混洗参数
+.gen_var    shuff_add1:shuff_add0,shuff_mid0,shuff_mid1 
+.gen_var    shuff_ld_0_15
+;地址参数
+.add_var    addr_x, addr_k, addr_b, addr_r, addr_yt,  addr_mid,  ytnk_ld, OR_1,  r_ld, OR_16, shuff_add,OR_17
+
+
+;地址赋值
+SMVAGA36    input_x1:input_x0,  addr_x
+SMVAGA36    input_k1:input_k0,  addr_k
+SMVAGA36    input_b1:input_b0,  addr_b
+SMVAGA36    input_r1:input_r0,  addr_r
+SMVAGA36    input_yt1:input_yt0,addr_yt
+
+
+;中间变量初始化
+SMOVIL      0,i                     ;i=0
+SMOVIH      0,i
+SADD        0,i,j
+SADD        0,i,addrmid1
+SADD        0,i,shuff_add1          ;混洗地址
+SADD        0,i,flagx
+SADD        0,i,zero
+VMOVIL      0,temp_zero
+VMOVIH      0,temp_zero
+
+SADD        1,nk,addrmid0
+SMVAGA36    addrmid1:addrmid0,addr_mid
+VLDW        *+addr_b[addr_mid], temp_bmid
+
+SSHFLR      1,nx,addrmid0
+SMVAGA36    addrmid1:addrmid0,addr_mid
+VLDW        *+addr_r[addr_mid], temp_rmid1
+
+VLDH        *+addr_x,mid_NULL
+
+SADD        0,i,addrmid0
+SMVAGA36    addrmid1:addrmid0,addr_mid
+VLDH        *+addr_k[addr_mid], temp_short_k1
+SADDA       16,addr_mid,addr_mid
+VLDH        *+addr_k[addr_mid], temp_short_k2
+
+
+SSHFLL      2,nk,addrmid0
+SADDA       addrmid1:addrmid0,addr_yt,ytnk_ld
+
+SADD        1,i,addrmid0
+SMVAGA36    addrmid1:addrmid0,OR_1
+
+SADD        16,i,addrmid0
+SMVAGA36    addrmid1:addrmid0,OR_16
+SADD        17,i,addrmid0
+SMVAGA36    addrmid1:addrmid0,OR_17
+
+
+SADDA       0,addr_r,r_ld
+
+VMOVIL      528,shuff_ld_0_15
+VMOVIH      528,shuff_ld_0_15
+
+SMVCGC      i,SMR   ;混洗模式配置
+;混洗配置
+SMOVIL      0,shuff_add0
+SMOVIH      0x40160000,shuff_add0   ;shuff_add0 = 0x40160000
+SMVAGA36    shuff_add1:shuff_add0,shuff_add ;混洗地址
+SMOVIL      0x04040404,shuff_mid0
+SMOVIH      0x04040404,shuff_mid0
+SMOVIL      0x04030201,shuff_mid1               ;0x04030201
+SMOVIH      0x04030201,shuff_mid1
+SSTW        shuff_mid1,*shuff_add++[1]
+SADDU       shuff_mid0,shuff_mid1,shuff_mid1    ;0x08070605
+SSTW        shuff_mid1,*shuff_add++[1]
+SADDU       shuff_mid0,shuff_mid1,shuff_mid1    ;0x0c0b0a09
+SSTW        shuff_mid1,*shuff_add++[1]
+SADDU       shuff_mid0,shuff_mid1,shuff_mid1    ;0x100f0e0d
+SSTW        shuff_mid1,*shuff_add++[1]
+
+SLT         16,nk,flagnk            ;nk>16  flagnk=1    nk<16 flagnk=0
+
+VLDH        *addr_x, temp_short_x1
+VLDH        *+addr_x[OR_16], temp_short_x2
+
+.loop_i:    .loop
+VMVCGC      temp_short_x1, SVR
+SMVCCG      SVR0,x_i
+SSHFLL      15,x_i,x_i
+
+SVBCAST     x_i, temp_x1
+SVBCAST     x_i, temp_x2
+VSHUFW      temp_short_x1,temp_short_x2,temp_short_x1  ;混洗
+VSHUFW      temp_short_x2,temp_zero,temp_short_x2      ;混洗
+
+VLDW        *addr_b, temp_int_b1
+VLDW        *+addr_b[OR_16], temp_int_b2
+
+VSHFAR      15, temp_int_b2,temp_int15_b2
+VBEXT       shuff_ld_0_15,temp_int15_b2,temp_short_b2
+VMULIS      temp_short_b2,temp_short_k2,temp_yt2
+VSTW        temp_yt2, *+addr_yt[OR_16]
+
+VSHFAR      15, temp_int_b1,temp_int15_b1
+VBEXT       shuff_ld_0_15,temp_int15_b1,temp_short_b1
+VMULIS      temp_short_b1,temp_short_k1,temp_yt1
+VSTW        temp_yt1, *addr_yt
+
+.t3:
+VSTW        temp_zero,*ytnk_ld
+
+.t5:
+SADD        0,zero,j
+VLDW        *addr_yt, temp_yt1
+VLDW        *+addr_yt[OR_16],temp_yt2
+
+.loop_k     .loop
+VSUB        temp_yt1,temp_x1,temp_x1
+VSUB        temp_yt2,temp_x2,temp_x2
+VSHUFW      temp_yt1,temp_yt2,temp_yt1  ;混洗
+VSHUFW      temp_yt2,temp_zero,temp_yt2  ;混洗
+VSUB        temp_yt1,temp_x1,temp_x1
+VSUB        temp_yt2,temp_x2,temp_x2
+VSHUFW      temp_yt1,temp_yt2,temp_yt1  ;混洗
+VSHUFW      temp_yt2,temp_zero,temp_yt2  ;混洗
+VSUB        temp_yt1,temp_x1,temp_x1
+VSUB        temp_yt2,temp_x2,temp_x2
+VSHUFW      temp_yt1,temp_yt2,temp_yt1  ;混洗
+VSHUFW      temp_yt2,temp_zero,temp_yt2  ;混洗
+VSUB        temp_yt1,temp_x1,temp_x1
+VSUB        temp_yt2,temp_x2,temp_x2
+VSHUFW      temp_yt1,temp_yt2,temp_yt1  ;混洗
+VSHUFW      temp_yt2,temp_zero,temp_yt2  ;混洗
+SADD        4,j,j
+SLT         j,nk,loop_j
+[loop_j]    SBR .loop_k
+.endloop
+
+VSTW        temp_x1,*addr_b
+VSHFAR      15, temp_x1, temp_x1
+VSHFAR      15, temp_x2, temp_x2
+VBEXT       shuff_ld_0_15,temp_x1,temp_mid_x1
+VBEXT       shuff_ld_0_15,temp_x2,temp_mid_x2
+VMULIS      temp_mid_x1,temp_short_k1,temp_mid_x1
+VMULIS      temp_mid_x2,temp_short_k2,temp_mid_x2
+VADD        temp_mid_x1,temp_int_b1,temp_int_b1
+VADD        temp_mid_x2,temp_int_b2,temp_int_b2
+VSTW        temp_int_b1,*+addr_b[1]
+VSTW        temp_int_b2,*+addr_b[OR_17]
+VSTW        temp_x1,*r_ld++[OR_1]
+
+
+
+SADD        1,i,i
+SLT         i,nx,loop_i
+[loop_i]    SBR .loop_i
+.endloop
+
+VLDDWM2     *addr_r,r_m2ld_1:r_m2ld_0
+VBALE2      r_m2ld_0,r_m2ld_1,r_m2ld_0
+VSTW        r_m2ld_0,*addr_r
+
+SADD        1,nk,addrmid0
+SMVAGA36    addrmid1:addrmid0,addr_mid
+VSTW        temp_bmid,*+addr_b[addr_mid]
+
+SSHFLR      1,nx,addrmid0
+SMVAGA36    addrmid1:addrmid0,addr_mid
+VSTW        temp_rmid1, *+addr_r[addr_mid]
+
+.size       DSP_iir_lat,-DSP_iir_lat

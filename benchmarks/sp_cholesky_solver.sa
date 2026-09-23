@@ -1,0 +1,280 @@
+.global DSPF_sp_cholesky_solver
+
+.input order, v_L_h:v_L_l, v_y_h:v_y_l, v_b_h:v_b_l, v_x_h:v_x_l, buf_h:buf_l
+.gen_var r_order
+.gen_var i, j, sum, tempf, temp_b, temp_L, ans_y, zero, is_stop, is_continue, temp_off, tempd, temp_buf, ans_x
+.gen_var tempv, zero_v, v_y_temp, v_L_temp, v_b_temp, v_x_temp, buf_temp
+.gen_var arg, div_temp_1, div_temp_2, div_temp_3, div_temp_4, div_temp_5, div_temp_6, div_temp_7
+.add_var r_v_L, r_v_y, r_v_b, r_v_x, r_buf
+.add_var off_1, off_2
+
+SMOV order, r_order
+SMVAGA36 v_L_h:v_L_l, r_v_L
+SMVAGA36 v_y_h:v_y_l, r_v_y
+SMVAGA36 v_b_h:v_b_l, r_v_b
+SMVAGA36 v_x_h:v_x_l, r_v_x
+SMVAGA36 buf_h:buf_l, r_buf
+
+; solve L * y = b
+
+; zero_v = vec_svbcast(0.0f)
+SMOVIL 0x0000, zero
+SMOVIH 0x0000, zero
+SVBCAST zero, zero_v
+
+; zero_v->v_y
+SMOVIL 0x0000, i
+SMOVIH 0x0000, i
+
+.i_loop1: .loop
+    SLT i, r_order, is_continue
+    [!is_continue] SBR .i_loop1_end
+
+    SMVAGA32 i, off_1
+    VSTW zero_v, *+r_v_y[off_1]
+
+    SADD 16, i, i
+
+    SBR .i_loop1
+.i_loop1_end: 
+.endloop
+
+; main part
+SMOVIL 0x0000, i
+SMOVIH 0x0000, i
+.i_loop2: .loop
+    SLT i, r_order, is_continue
+    [!is_continue] SBR .i_loop2_end
+
+    VMOV zero_v, tempv
+
+    SMOVIL 0x0000, sum
+    SMOVIH 0x0000, sum
+
+    SMOVIL 0x0000, j
+    SMOVIH 0x0000, j
+
+    .j_loop1: .loop
+        SLT j, r_order, is_continue
+        [!is_continue] SBR .j_loop1_end
+
+        SLT j, i, is_continue
+        [!is_continue] SBR .j_loop1_end
+
+        SMVAGA32 j, off_1
+
+        SMULIU i, r_order, temp_off
+        SADDU j, temp_off, temp_off
+        SMVAGA32 temp_off, off_2
+
+        VLDW *+r_v_y[off_1], v_y_temp
+        VLDW *+r_v_L[off_2], v_L_temp
+
+        VFMULAS32 v_y_temp, v_L_temp, tempv, tempv
+
+        SADD 16, j, j
+
+        SBR .j_loop1
+    .j_loop1_end: 
+    .endloop
+    
+    VMVCGC tempv, SVR
+
+    SMVCCG SVR0, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR1, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR2, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR3, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR4, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR5, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR6, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR7, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR8, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR9, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR10, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR11, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR12, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR13, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR14, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVCCG SVR15, tempf
+    SFADDS32 tempf, sum, sum
+
+    SMVAGA32 i, off_1
+
+    SMULIU i, r_order, temp_off
+    SADDU i, temp_off, temp_off
+    SMVAGA32 temp_off, off_2
+
+    VLDW *+r_v_L[off_2], v_L_temp
+
+    .gap1:
+    VMVCGC v_L_temp, SVR
+    SMVCCG SVR0, temp_L
+
+    VLDW *+r_v_b[off_1], v_b_temp
+
+    .gap2:
+    VMVCGC v_b_temp, SVR
+    SMVCCG SVR0, temp_b
+
+    ; ans_y = (temp_b - sum) / temp_L
+    SFSUBS32 sum, temp_b, temp_b
+
+    SMOVIL 0x00000000, arg
+    SMOVIH 0x40000000, arg
+
+    SFRCPS32 temp_L, div_temp_1
+    SFMULS32 temp_L, div_temp_1, div_temp_2
+    SFSUBS32 div_temp_2, arg, div_temp_3
+    SFMULS32 div_temp_3, div_temp_1, div_temp_4
+    SFMULS32 temp_L, div_temp_4, div_temp_5
+    SFSUBS32 div_temp_5, arg, div_temp_6
+    SFMULS32 div_temp_6, div_temp_4, div_temp_7
+    SFMULS32 temp_b, div_temp_7, ans_y
+
+    VLDW *+r_v_y[off_1], v_y_temp
+
+    .gap3:
+    VMVCGC v_y_temp, SVR
+    SMVCGC ans_y, SVR0
+    VMVCCG SVR, v_y_temp
+
+    VSTW v_y_temp, *+r_v_y[off_1]
+
+    SADD 1, i, i
+    SBR .i_loop2
+.i_loop2_end: 
+.endloop
+
+; solve L_transpose * x = y
+
+; v_y->buf
+SMOVIL 0x0000, i
+SMOVIH 0x0000, i
+.i_loop3: .loop
+    SLT i, r_order, is_continue
+    [!is_continue] SBR .i_loop3_end
+
+    SMVAGA32 i, off_1
+    VLDW *+r_v_y[off_1], v_y_temp
+    VSTW v_y_temp, *+r_buf[off_1]
+
+    SADD 16, i, i
+    SBR .i_loop3
+.i_loop3_end: 
+.endloop
+
+; main part
+SSUB 1, r_order, tempd
+SMOV tempd, i
+.i_loop4: .loop
+    SLT i, zero, is_stop
+    [is_stop] SBR .i_loop4_end
+
+    SMVAGA32 i, off_1
+
+    SMULIU i, r_order, temp_off
+    SADDU i, temp_off, temp_off
+    SMVAGA32 temp_off, off_2
+
+    VLDW *+r_v_L[off_2], v_L_temp
+
+    VMVCGC v_L_temp, SVR
+    SMVCCG SVR0, temp_L
+
+    VLDW *+r_buf[off_1], buf_temp
+
+    .gap4:
+    VMVCGC buf_temp, SVR
+    SMVCCG SVR0, temp_buf
+
+    ; ans_x = temp_buf / temp_L
+    SMOVIL 0x00000000, arg
+    SMOVIH 0x40000000, arg
+
+    SFRCPS32 temp_L, div_temp_1
+    SFMULS32 temp_L, div_temp_1, div_temp_2
+    SFSUBS32 div_temp_2, arg, div_temp_3
+    SFMULS32 div_temp_3, div_temp_1, div_temp_4
+    SFMULS32 temp_L, div_temp_4, div_temp_5
+    SFSUBS32 div_temp_5, arg, div_temp_6
+    SFMULS32 div_temp_6, div_temp_4, div_temp_7
+    SFMULS32 temp_buf, div_temp_7, ans_x
+
+    VLDW *+r_v_x[off_1], v_x_temp
+
+    .gap5:
+    VMVCGC v_x_temp, SVR
+    SMVCGC ans_x, SVR0
+    VMVCCG SVR, v_x_temp
+
+    VSTW v_x_temp, *+r_v_x[off_1]
+
+    SFSUBS32 ans_x, zero, ans_x
+
+    SVBCAST ans_x, tempv
+
+    SMOVIL 0x0000, j
+    SMOVIH 0x0000, j
+
+    .j_loop2: .loop
+       SLT j, r_order, is_continue
+        [!is_continue] SBR .j_loop2_end
+
+        SLT j, i, is_continue
+        [!is_continue] SBR .j_loop2_end
+
+        SMVAGA32 j, off_1
+
+        SMULIU i, r_order, temp_off
+        SADDU j, temp_off, temp_off
+        SMVAGA32 temp_off, off_2
+
+        VLDW *+r_buf[off_1], buf_temp
+        VLDW *+r_v_L[off_2], v_L_temp
+
+        VFMULAS32 tempv, v_L_temp, buf_temp, buf_temp
+
+        VSTW buf_temp, *+r_buf[off_1]
+
+        SADD 16, j, j
+
+        SBR .j_loop2
+    .j_loop2_end: 
+    .endloop
+
+    SSUB 1, i, i
+    SBR .i_loop4
+.i_loop4_end: 
+.endloop
+
+.size DSPF_sp_cholesky_solver, -.DSPF_sp_cholesky_solver

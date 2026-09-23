@@ -1,0 +1,317 @@
+.global DSPF_dp_cholesky_cmplx_sa 
+
+.input order, input_A_am1:input_A_am0, input_L_am1:input_L_am0 ;传入的参数
+.add_var A_am, L_am, t_am ;AR
+.add_var offset1, offset2, offset3, offset4, offset_real, offset_imag ;OR
+
+
+.gen_var dst_real1:dst_real0, dst_imag1:dst_imag0 ;复数乘法结果
+.gen_var mid_1_real1:mid_1_real0, mid_1_imag1:mid_1_imag0, mid_0_real1:mid_0_imag0, mid_0_imag1:mid_0_real0;复数乘法中间结果
+.gen_var saved3:saved2, saved1:saved0 ;保存下一行数据
+.gen_var mixed_real1:mixed_real0, mixed_imag1:mixed_imag0 ;广播结果
+.gen_var zero1:zero0 ;零向量
+.gen_var temp3:temp2, temp1:temp0 ;临时存放数据 
+.gen_var vnum_real1:vnum_real0, vnum_imag1:vnum_imag0
+
+
+.gen_var i, j, k ;循环索引
+.gen_var len, end, bex ; len：需要处理的元素个数，end：判断循环是否结束， bex：取反的位置
+.gen_var Ljj_real1:Ljj_real0, Ljj_imag1:Ljj_imag0 ;矩阵中某一个复数
+.gen_var off1, off2, off3, off4, off5:off6 ;偏移长度
+
+
+.gen_var sd0:sd1, sd2:sd3, sd4:sd5, sd6:sd7, sd8:sd9, sd10:sd11, sd12:sd13, sd14:sd15, sd16:sd17, sd18:sd19, sd20:sd21, sd22:sd23, sd24:sd25  ;开根号的中间数据
+.gen_var vd0:vd1, vd2:vd3, vd4:vd5, vd6:vd7, vd8:vd9, vd10:vd11, vd12:vd13, vd14:vd15 ;除法的中间数据
+
+
+;标量变量转换为基址变量，R->AR                     
+SMVAGA36 input_A_am1:input_A_am0, A_am                                
+SMVAGA36 input_L_am1:input_L_am0, L_am
+
+VMOVIL 0, zero0
+VMOVIH 0, zero0
+VMOVIL 0, zero1
+VMOVIH 0, zero1
+
+;初始化j
+SMOVIL 0, j
+.j_loop: .loop
+
+    ;判断循环结束
+    SLT j, order, end
+    [!end] SBR .j_end
+
+    SMOVIL 0, off5
+    SMULIU j, order, off3 ;off3 = j*order
+    SSHFLL 3, off3, off6 
+    SSHFLL 1, off6, off6 ;off6 = j*order*2*8(字节)
+    SADDA off5:off6, L_am, t_am ;t_am = L_am的第j行
+
+    SADD order, off3, off3
+    SSHFLL 1, off3, off3 ;off3 = ((j+1)*order)*2
+    SADD 16, off3, off4 ;off4 = ((j+1)*order)*2+16
+
+    SMVAGA32 off3, offset_real ;设置OR
+    SMVAGA32 off4, offset_imag
+
+    VLDDW *+L_am[offset_real], saved1:saved0 ;保存下一行前八个复数
+    VLDDW *+L_am[offset_imag], saved3:saved2 ;保存下一行后八个复数
+
+    ;初始化k，len
+    SMOVIL 0, k
+    SMOV order, len
+    .k0_loop: .loop
+
+        ;判断循环结束
+        SLT 0, len, end
+        [!end] SBR .k0_end
+
+        ;FIXME:.....
+        SSHFLL 5, k, off1 ;off1 = k*16*2
+        SADD 16, off1, off2 ;off2 = k*16*2+16
+
+        SMVAGA32 off1, offset1 ;设置OR
+        SMVAGA32 off2, offset2 
+
+        ;初始化t_am
+        VSTDW zero1:zero0, *+t_am[offset1]
+        VSTDW zero1:zero0, *+t_am[offset2]
+
+        ;改变循环变量
+        SADD 1, k, k
+        SSUB 16, len, len
+        SBR .k0_loop
+
+    .endloop
+    .k0_end:
+
+    ;初始化i (* +)
+    SMOVIL 0, i
+    .i_loop: .loop
+
+        ;判断循环是否结束
+        SLT i, j, end
+        [!end] SBR .i_end
+
+        ;计算偏移量
+        SMULIU i, order, off1
+        SADD off1, j, off1
+        SSHFLL 2, off1, off1 ;off1 = (i*order+j)*4  ---> L[i][j]
+        SMVAGA32 off1, offset1
+
+        SMOVIL 31, bex ;设置取反的位置 
+        VLDW *+L_am[offset1], temp0 
+        VMVCGC temp0, SVR ;将L[i][j]及之后的数据放入SVR
+        SMVCCG SVR0, Ljj_real0 ;取出数据L[i][j]
+        SMVCCG SVR1, Ljj_real1
+        SMVCCG SVR2, Ljj_imag0
+        SMVCCG SVR3, Ljj_imag1
+        SBEX bex, Ljj_imag1, Ljj_imag1  ;虚部取反
+        SVBCAST2 Ljj_real1:Ljj_real0, mixed_real1:mixed_real0 ;实部广播
+        SVBCAST2 Ljj_imag1:Ljj_imag0, mixed_imag1:mixed_imag0 ;虚部广播
+
+        ;初始化k
+        SMOVIL 0, k
+        SSUB j, order, len
+        .k1_loop: .loop
+
+            ;判断循环是否结束
+            SLT 0, len, end
+            [!end] SBR .k1_end
+
+            SSHFLL 4, k, off2
+            SADD j, off2, off2 ;off2 = j+k*VPE_NUM
+
+            SMULIU i, order, off1
+            SADD off1, off2, off1 
+            SSHFLL 1, off1, off1 ;off1 = (i*order+j+k*VPE_NUM)*2
+            SADD 16, off1, off3 ;off3 = (i*order+j+k*VPE_NUM)*2+16
+
+            SSHFLL 1, off2, off2 ;off2 = (j+k*VPE_NUM)*2
+            SADD 16, off2, off4 ;off4 = (j+k*VPE_NUM)*2+16
+
+            SMVAGA32 off1, offset1 ;设置OR
+            SMVAGA32 off2, offset2
+            SMVAGA32 off3, offset3
+            SMVAGA32 off4, offset4
+
+            VLDDW0M4 *+L_am[offset1], temp1:temp0 ;取数 复数的实部
+            VLDDW1M4 *+L_am[offset3], temp3:temp2 ;取数 复数的虚部
+
+            VFMULD temp1:temp0, mixed_real1:mixed_real0, mid_1_real1:mid_1_real0 ;实部1*实部2
+            VFMULD temp3:temp2, mixed_imag1:mixed_imag0, mid_1_imag1:mid_1_imag0 ;虚部1*虚部2
+            VFMULD temp1:temp0, mixed_imag1:mixed_imag0, mid_0_real1:mid_0_imag0 ;实部1*虚部2
+            VFMULD temp3:temp2, mixed_real1:mixed_real0, mid_0_imag1:mid_0_real0 ;虚部1*实部2
+
+            VFSUBD mid_1_imag1:mid_1_imag0, mid_1_real1:mid_1_real0, dst_real1:dst_real0 ;实部结果=实部1*实部2-虚部1*虚部2
+            VFADDD mid_0_real1:mid_0_imag0, mid_0_imag1:mid_0_real0, dst_imag1:dst_imag0 ;虚部结果=实部1*虚部2+实部2*虚部1
+
+            ;FIXME:...
+            VLDDW0M4 *+t_am[offset2], vnum_real1:vnum_real0 ;取数 t_am复数的实部
+            VLDDW1M4 *+t_am[offset4], vnum_imag1:vnum_imag0 ;取数 t_am复数的虚部
+
+            VFADDD dst_real1:dst_real0, vnum_real1:vnum_real0, vnum_real1:vnum_real0 ;A_am + 乘法结果
+            VFADDD dst_imag1:dst_imag0, vnum_imag1:vnum_imag0, vnum_imag1:vnum_imag0
+
+            VSTDW0M16 vnum_real1:vnum_real0, *+t_am[offset2] ;结果存回t_am
+            VSTDW1M16 vnum_imag1:vnum_imag0, *+t_am[offset4]
+
+            ;改变循环变量
+            SSUB 16, len, len
+            SADD 1, k, k
+            SBR .k1_loop 
+
+        .endloop
+        .k1_end: 
+
+        ;改变循环变量
+        SADD 1, i, i
+        SBR .i_loop
+
+    .endloop
+    .i_end: 
+
+
+    ;初始化k, len (-)
+    SMOVIL 0, k
+    SSUB j, order, len
+    .k2_loop: .loop
+
+        ;判断循环是否结束
+        SLT 0, len, end
+        [!end] SBR .k2_end
+
+        ;(-)
+        SSHFLL 4, k, off2
+        SADD j, off2, off2
+        SMULIU j, order, off1
+        SADD off1, off2, off1
+
+        SSHFLL 1, off1, off1 ;off1 = (j+k*VPE_NUM+j*order)*2
+        SADD 16, off1, off3 ;off3 = (j+k*VPE_NUM+j*order)*2+16
+
+        SSHFLL 1, off2, off2 ;off2 = (j+k*VPE_NUM)*2
+        SADD 16, off2, off4 ;off4 = (j+k*VPE_NUM)*2+16
+
+        SMVAGA32 off1, offset1 ;设置OR
+        SMVAGA32 off2, offset2
+        SMVAGA32 off3, offset3
+        SMVAGA32 off4, offset4
+
+        VLDDWM2  *+A_am[offset1], vnum_real1:vnum_real0 ;A_am取数 16个复数
+        VLDDWM2  *+A_am[offset3], vnum_imag1:vnum_imag0
+
+        VLDDWM2  *+t_am[offset2], temp1:temp0 ;t_am取数 16个复数
+        VLDDWM2  *+t_am[offset4], temp3:temp2
+
+        VFSUBD temp1:temp0, vnum_real1:vnum_real0, vnum_real1:vnum_real0 ;A_am- t_am
+        VFSUBD temp3:temp2, vnum_imag1:vnum_imag0, vnum_imag1:vnum_imag0
+
+        VSTDWM16 vnum_real1:vnum_real0, *+L_am[offset1] ;结果存回L_am
+        VSTDWM16 vnum_imag1:vnum_imag0, *+L_am[offset3]
+
+        ;改变循环变量
+        SSUB 16, len, len
+        SADD 1, k, k
+        SBR .k2_loop 
+
+    .endloop
+    .k2_end: 
+
+    ;开根号
+    SMULIU j, order, off1
+    SADD off1, j, off1
+    SSHFLL 2, off1, off1 ;off1 = (j*order+j)*4
+    SMVAGA32 off1, offset1
+
+    VLDW *+L_am[offset1], temp0
+    VMVCGC temp0, SVR
+    SMVCCG SVR0, Ljj_real0 ;取出对角线元素实部开根号
+    SMVCCG SVR1, Ljj_real1
+
+    SMOVIL 0x0000, sd1
+    SSHFLL 16, sd1, sd1 
+    SMOVIL 0x3fe0, sd0 
+    SSHFLL 16, sd0, sd0 ;sd0:sd1 为迭代公式中的立即数 0.5
+    SMOVIL 0x0000, sd3
+    SSHFLL 16, sd3, sd3 
+    SMOVIL 0x3ff8, sd2 
+    SSHFLL 16, sd2, sd2 ;sd2:sd3 为迭代公式中的立即数 1.5
+
+    SFRSQD Ljj_real1:Ljj_real0, sd4:sd5 ;使用 FRSQD 指令求出初始迭代值
+    SFMULD sd4:sd5, sd4:sd5, sd6:sd7 ;第一次迭代
+    SFMULD sd0:sd1, Ljj_real1:Ljj_real0, sd8:sd9 ;v/2
+    SFMULD sd8:sd9, sd6:sd7, sd10:sd11 ;(v/2)*X[n] *X[n]
+    SFSUBD sd10:sd11, sd2:sd3, sd12:sd13 ;1.5-(v/2)*X[n] *X[n]
+    SFMULD sd12:sd13, sd4:sd5, sd14:sd15 ;X[n](1.5-(v/2)*X[n] *X[n])
+    SFMULD sd14:sd15, sd14:sd15, sd16:sd17 ;第二次迭代
+    SFMULD sd0:sd1, Ljj_real1:Ljj_real0, sd18:sd19 ;v/2
+    SFMULD sd16:sd17, sd18:sd19, sd20:sd21 ;(v/2)*X[n] *X[n]
+    SFSUBD sd20:sd21, sd2:sd3, sd22:sd23 ;1.5-(v/2)*X[n] *X[n]
+    SFMULD sd22:sd23, sd14:sd15, sd24:sd25 ;X[n](1.5-(v/2)*X[n] *X[n])
+    SFMULD Ljj_real1:Ljj_real0, sd24:sd25, Ljj_real1:Ljj_real0 ;得到最终开方结果
+
+    
+    ;初始化k, len （/）
+    SMOVIL 0, k
+    SSUB j, order, len
+    SSHFLR 1, off1, off1
+    .k3_loop: .loop
+
+        ;判断循环是否结束
+        SLT 0, len, end
+        [!end] SBR .k3_end
+
+        SSHFLL 4, k, off2
+        SSHFLL 1, off2, off2
+        SADD off1, off2, off2 ; off2 = (j*order+j+k*VPE_NUM)*2
+        SADD 16, off2, off4 ; off4 = (j*order+j+k*VPE_NUM)*2+16
+
+        SMVAGA32 off2, offset2 ;设置OR
+        SMVAGA32 off4, offset4
+
+        ;除法
+        VLDDWM2 *+L_am[offset2], temp1:temp0
+        VLDDWM2 *+L_am[offset4], temp3:temp2
+
+        ;FIXME:......
+        VMOVIL 0x0000,vd1
+        VSHFLL 16, vd1, vd1
+        VMOVIL 0x4000,vd0
+        VSHFLL 16, vd0, vd0 ;vd0:vd1为迭代公式中的立即数2
+
+        SVBCAST2 Ljj_real1:Ljj_real0, mixed_real1:mixed_real0 ;Ljj双字广播
+
+        VFRCPD mixed_real1:mixed_real0, vd2:vd3 ;使用FRCPD指令求出初始迭代值
+        VFMULD mixed_real1:mixed_real0, vd2:vd3, vd4:vd5 ;第一次迭代 迭代公式为X[n+1]= X[n](2-v*X[n])
+        VFSUBD vd4:vd5, vd0:vd1, vd6:vd7
+        VFMULD vd6:vd7, vd2:vd3, vd8:vd9
+        VFMULD mixed_real1:mixed_real0, vd8:vd9, vd10:vd11
+        VFSUBD vd10:vd11, vd0:vd1, vd12:vd13
+        VFMULD vd12:vd13, vd8:vd9, vd14:vd15
+
+        VFMULD temp1:temp0, vd14:vd15, temp1:temp0 ;除法结果
+        VFMULD temp3:temp2, vd14:vd15, temp3:temp2
+
+        VSTDWM16 temp1:temp0, *+L_am[offset2] ;结果写入L_am
+        VSTDWM16 temp3:temp2, *+L_am[offset4]
+
+        ;改变循环变量
+        SSUB 16, len, len
+        SADD 1, k, k
+        SBR .k3_loop 
+
+    .endloop
+    .k3_end: 
+
+    VSTDW saved1:saved0, *+L_am[offset_real] ;还原下一行前八个复数
+    VSTDW saved3:saved2, *+L_am[offset_imag] ;还原下一行后八个复数
+
+    ;改变循环变量
+    SADD 1, j, j
+    SBR .j_loop 
+
+.endloop  
+.j_end: 
+
+.size DSPF_dp_cholesky_cmplx_sa, -.DSPF_dp_cholesky_cmplx_sa 
